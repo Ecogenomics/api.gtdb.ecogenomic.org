@@ -1,0 +1,30 @@
+[tool.poetry]
+name = "api.gtdb.ecogenomic.org"
+version = "0.1.0"
+description = "API to the Genome Taxonomy Database (GTDB)"
+authors = ["Aaron Mussig <aaronmussig@gmail.com>"]
+license = "GPL-3"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+rq = "^1.10.1"
+redis = "^4.1.1"
+hiredis = "^2.0.0"
+fastapi = "^0.74.0"
+pydantic = "^1.9.0"
+uvicorn = "^0.17.0"
+python-dotenv = "^0.19.2"
+SQLAlchemy = "^1.4.29"
+psycopg2 = "^2.9.3"
+vtracker = "^1.0.1"
+requests = "^2.27.1"
+python-multipart = "^0.0.5"
+DendroPy = "^4.5.2"
+aiosmtplib = "^1.1.6"
+fastani = "^1.0.1"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

@@ -1,0 +1,18 @@
+{
+  "listeners": {
+    "*:80": {
+      "pass": "applications/fastapi"
+    }
+  },
+  "applications": {
+    "fastapi": {
+      "type": "python 3.10",
+      "processes": 1,
+      "path": "/api",
+      "home": "/usr/local",
+      "module": "main",
+      "callable": "app"
+    }
+  },
+  "access_log": "/dev/stdout"
+}
