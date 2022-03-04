@@ -1,3 +1,10 @@
+# 1.0.0 (2022-03-04)
+
+
+### Features
+
+* **init:** Initial release. ([5eaeae3](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/5eaeae3546240ca3c253806738f36ea57d556f9b))
+
 # [1.2.0](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v1.1.0...v1.2.0) (2022-02-11)
 
 
