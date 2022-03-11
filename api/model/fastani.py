@@ -24,6 +24,7 @@ class FastAniResultData(BaseModel):
     status: JobStatus = Field(..., example=JobStatus.QUEUED.value, title="job processing status")
     stdout: Optional[str] = Field(None)
     stderr: Optional[str] = Field(None)
+    cmd: Optional[str] = Field(None)
 
 
 class FastAniResult(BaseModel):

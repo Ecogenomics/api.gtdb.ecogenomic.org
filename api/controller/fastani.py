@@ -247,12 +247,13 @@ def get_fastani_results_from_job(job: Job, n_rows: Optional[int] = None, page: O
         r = dependency.meta.get('r')
         stdout = dependency.meta.get('stdout')
         stderr = dependency.meta.get('stderr')
+        cmd = dependency.meta.get('cmd')
         ani, mapped, total = None, None, None
         if dependency.result is not None:
             ani, mapped, total = dependency.result
         tmp_results[q][r] = FastAniResultData(ani=ani, mapped=mapped, total=total,
                                               status=JobStatus[dependency.get_status(refresh=False).upper()],
-                                              stdout=stdout, stderr=stderr)
+                                              stdout=stdout, stderr=stderr, cmd=cmd)
 
     # Group the results by query genome
     out = list()
@@ -356,6 +357,7 @@ def run_fastani(q_path: str, r_path: str, kmer: int, frag_len: int, min_frag: in
         if job:
             job.meta['stderr'] = stderr
             job.meta['stdout'] = stdout
+            job.meta['cmd'] = ' '.join(cmd)
             job.save_meta()
 
         # Verify that the program ran correctly
