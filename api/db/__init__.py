@@ -4,8 +4,8 @@ from sqlalchemy.orm import sessionmaker
 
 from api.config import POSTGRES_USER, POSTGRES_PASS, POSTGRES_HOST
 
-GTDB_DB_URL = f'postgresql://{POSTGRES_USER}:{POSTGRES_PASS}@{POSTGRES_HOST}/gtdb_r202'
-GTDB_WEB_DB_URL = f'postgresql://{POSTGRES_USER}:{POSTGRES_PASS}@{POSTGRES_HOST}/gtdb_r202_web'
+GTDB_DB_URL = f'postgresql://{POSTGRES_USER}:{POSTGRES_PASS}@{POSTGRES_HOST}/gtdb_r207'
+GTDB_WEB_DB_URL = f'postgresql://{POSTGRES_USER}:{POSTGRES_PASS}@{POSTGRES_HOST}/gtdb_r207_web'
 
 gtdb_engine = create_engine(
     GTDB_DB_URL,

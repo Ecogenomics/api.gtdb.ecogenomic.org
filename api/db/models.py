@@ -461,17 +461,6 @@ class GtdbSpeciesClusterCount(GtdbBase):
 
 # gtdb web
 
-class DbGtdbTreeCount(GtdbBase):
-    """This is a materialized view."""
-    __tablename__ = 'gtdb_tree_count'
-
-    column_not_exist_in_db = Column(Integer, primary_key=True)
-
-    parent = Column(Text, nullable=False)
-    child = Column(Text, nullable=False)
-    total = Column(Integer, nullable=False)
-
-
 class DbGtdbTree(GtdbWebBase):
     __tablename__ = 'gtdb_tree'
 
