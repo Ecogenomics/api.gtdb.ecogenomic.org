@@ -1,3 +1,15 @@
+# [2.0.0](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v1.1.0...v2.0.0) (2022-04-08)
+
+
+### Features
+
+* **R207:** Updated for R207. ([727fde4](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/727fde489147461f8e2b736b2160822419147467))
+
+
+### BREAKING CHANGES
+
+* **R207:** Uses R207 database.
+
 # [1.1.0](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v1.0.0...v1.1.0) (2022-03-11)
 
 
