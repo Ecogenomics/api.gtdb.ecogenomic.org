@@ -211,6 +211,14 @@ class MetadataTypeMaterial(GtdbBase):
     gtdb_type_species_of_genus = Column(Boolean)
 
 
+class GtdbTypeView(GtdbBase):
+    __tablename__ = 'gtdb_type_view'
+
+    id = Column(Integer, primary_key=True)
+    gtdb_genus_type_species = Column(Boolean)
+    gtdb_species_type_strain = Column(Boolean)
+
+
 class LpsnGenera(GtdbBase):
     __tablename__ = 'lpsn_genera'
 

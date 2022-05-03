@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from api.config import GTDB_RELEASES
 from api.db.models import SurveyGenomes, GtdbWebTaxonHist, GtdbWebLpsnUrl, Genome, MetadataNcbi, MetadataGene, \
-    MetadataNucleotide, MetadataTaxonomy, MetadataTypeMaterial, GtdbWebGenomeTaxId
+    MetadataNucleotide, MetadataTaxonomy, MetadataTypeMaterial, GtdbWebGenomeTaxId, GtdbTypeView
 from api.exceptions import HttpNotFound, HttpBadRequest
 from api.model.genome import GenomeMetadata, GenomeTaxonHistory, GenomeCard, GenomeBase, GenomeMetadataNucleotide, \
     GenomeMetadataGene, GenomeMetadataNcbi, GenomeMetadataTaxonomy, GenomeNcbiTaxon, GenomeMetadataTypeMaterial
@@ -123,6 +123,8 @@ def genome_card(accession: str, db_gtdb: Session, db_web: Session) -> GenomeCard
     metadata_nucleotide = db_gtdb.query(MetadataNucleotide).filter_by(id=genome.id).first()
     metadata_taxonomy = db_gtdb.query(MetadataTaxonomy).filter_by(id=genome.id).first()
     metadata_type_material = db_gtdb.query(MetadataTypeMaterial).filter_by(id=genome.id).first()
+    gtdb_type_view = db_gtdb.query(GtdbTypeView).filter_by(id=genome.id).first()
+
     m = re.search('\((UBA\d+)\)', genome.name)
     subunit_summary_list = []
 
@@ -218,7 +220,7 @@ def genome_card(accession: str, db_gtdb: Session, db_web: Session) -> GenomeCard
         lpsnTypeDesignation=metadata_type_material.lpsn_type_designation,
         dsmzTypeDesignation=metadata_type_material.dsmz_type_designation,
         lpsnPriorityYear=metadata_type_material.lpsn_priority_year,
-        gtdbTypeSpeciesOfGenus=metadata_type_material.gtdb_type_species_of_genus)
+        gtdbTypeSpeciesOfGenus=gtdb_type_view.gtdb_genus_type_species)
 
     out_metadata_ncbi = GenomeMetadataNcbi(
         ncbi_genbank_assembly_accession=metadata_ncbi.ncbi_genbank_assembly_accession,
