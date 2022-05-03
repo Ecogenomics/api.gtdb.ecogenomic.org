@@ -1,3 +1,10 @@
+## [2.0.1](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.0.0...v2.0.1) (2022-05-03)
+
+
+### Bug Fixes
+
+* **genome:** Fixed an issue where genus type species may have been incorrect. ([b3a06c7](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/b3a06c76c519194e0bac644ac82fd23567cdbc85))
+
 # [2.0.0](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v1.1.0...v2.0.0) (2022-04-08)
 
 
