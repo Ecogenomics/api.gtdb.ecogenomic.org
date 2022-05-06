@@ -1,3 +1,10 @@
+## [2.0.2](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.0.1...v2.0.2) (2022-05-06)
+
+
+### Bug Fixes
+
+* **fastani:** Remove grouping of qvr and rvq. ([0f601e2](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/0f601e283cc4a69579934f2fccef1661c0931b0d))
+
 ## [2.0.1](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.0.0...v2.0.1) (2022-05-03)
 
 
