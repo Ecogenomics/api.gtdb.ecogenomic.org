@@ -341,6 +341,8 @@ def run_fastani(q_path: str, r_path: str, kmer: int, frag_len: int, min_frag: in
         if job:
             job.meta['stderr'] = stderr
             job.meta['cmd'] = ' '.join(cmd)
+            print('saving cmd: ')
+            print(cmd)
             job.save_meta()
 
         # Verify that the program ran correctly
