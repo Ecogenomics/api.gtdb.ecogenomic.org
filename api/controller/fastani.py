@@ -1,7 +1,6 @@
 import os
 import subprocess
 import tempfile
-from collections import defaultdict
 from functools import cmp_to_key
 from typing import List, Tuple, Optional, Union, Dict, Collection
 from typing import TypeVar
@@ -82,39 +81,17 @@ def fastani_job_to_rows(job_id: str):
         mapped = 'n/a'
         total = 'n/a'
 
-        if result.qvr.status is JobStatus.FINISHED and result.rvq.status is JobStatus.FINISHED:
-            if result.qvr.ani and result.rvq.ani:
-                ani = max(result.qvr.ani, result.rvq.ani)
-                qvr_af = result.qvr.mapped / result.qvr.total
-                rvq_af = result.rvq.mapped / result.rvq.total
-                if qvr_af > rvq_af:
-                    af = qvr_af
-                    mapped = result.qvr.mapped
-                    total = result.qvr.total
-                else:
-                    af = rvq_af
-                    mapped = result.rvq.mapped
-                    total = result.rvq.total
-            elif result.qvr.ani:
-                ani = result.qvr.ani
-                af = result.qvr.mapped / result.qvr.total
-                mapped = result.qvr.mapped
-                total = result.qvr.total
-            elif result.rvq.ani:
-                ani = result.rvq.ani
-                af = result.rvq.mapped / result.rvq.total
-                mapped = result.rvq.mapped
-                total = result.rvq.total
+        if result.data.status is JobStatus.FINISHED:
+            if result.data.ani is not None:
+                ani = result.data.ani
+                af = result.data.af
+                mapped = result.data.mapped
+                total = result.data.total
             else:
                 ani = '< 80%'
                 af = '-'
                 mapped = '-'
                 total = '-'
-            status = JobStatus.FINISHED
-        elif result.qvr.status == result.rvq.status:
-            status = result.qvr.status
-        else:
-            status = 'not completed'
 
         out.append([
             result.query,
@@ -123,7 +100,7 @@ def fastani_job_to_rows(job_id: str):
             af,
             mapped,
             total,
-            status
+            result.data.status
         ])
     return out
 
@@ -241,7 +218,7 @@ def get_fastani_results_from_job(job: Job, n_rows: Optional[int] = None, page: O
                                  sort_desc: Optional[List[bool]] = None) -> List[FastAniResult]:
     """Given the main job id, return all results."""
     # Extract each of the results
-    tmp_results = defaultdict(lambda: defaultdict())
+    out = list()
     for dependency in job.fetch_dependencies():
         q = dependency.meta.get('q')
         r = dependency.meta.get('r')
@@ -251,23 +228,30 @@ def get_fastani_results_from_job(job: Job, n_rows: Optional[int] = None, page: O
         ani, mapped, total = None, None, None
         if dependency.result is not None:
             ani, mapped, total = dependency.result
-        tmp_results[q][r] = FastAniResultData(ani=ani, mapped=mapped, total=total,
-                                              status=JobStatus[dependency.get_status(refresh=False).upper()],
-                                              stdout=stdout, stderr=stderr, cmd=cmd)
-
-    # Group the results by query genome
-    out = list()
-    for query_gid in sorted(job.meta['group_1']):
-        for ref_gid in sorted(job.meta['group_2']):
-            qvr = tmp_results[query_gid][ref_gid]
-            rvq = tmp_results[ref_gid][query_gid]
-            out.append(FastAniResult(query=query_gid, reference=ref_gid, qvr=qvr, rvq=rvq))
+        if ani is not None and mapped is not None and total is not None:
+            af = round(mapped / total, 4)
+        else:
+            af = None
+        data = FastAniResultData(ani=ani, mapped=mapped, total=total,
+                                 af=af,
+                                 status=JobStatus[dependency.get_status(refresh=False).upper()],
+                                 stdout=stdout, stderr=stderr, cmd=cmd)
+        out.append(FastAniResult(query=q, reference=r, data=data))
 
     # Sort according to the sort parameters
     if sort_by and sort_desc and len(sort_by) == len(sort_desc):
         def sort_fn(a: FastAniResult, b: FastAniResult):
-            a_ani, a_af, a_mapped, a_total, a_status = a.get_data()
-            b_ani, b_af, b_mapped, b_total, b_status = b.get_data()
+            a_ani = a.data.ani
+            a_af = a.data.af
+            a_mapped = a.data.mapped
+            a_total = a.data.total
+            a_status = a.data.status
+
+            b_ani = b.data.ani
+            b_af = b.data.af
+            b_mapped = b.data.mapped
+            b_total = b.data.total
+            b_status = b.data.status
 
             for cur_sort_by, cur_sort_desc in zip(sort_by, sort_desc):
                 cur_sort_desc_modifier = -1 if cur_sort_desc else 1
@@ -350,13 +334,12 @@ def run_fastani(q_path: str, r_path: str, kmer: int, frag_len: int, min_frag: in
         output = os.path.join(tmpdir, 'output.txt')
         cmd.extend(['-o', output])
 
-        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding='utf-8')
+        p = subprocess.Popen(cmd, stderr=subprocess.PIPE, encoding='utf-8')
         stdout, stderr = p.communicate()
 
         # Save output (as exceptions will return None)
         if job:
             job.meta['stderr'] = stderr
-            job.meta['stdout'] = stdout
             job.meta['cmd'] = ' '.join(cmd)
             job.save_meta()
 

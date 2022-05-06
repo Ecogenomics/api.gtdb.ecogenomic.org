@@ -19,6 +19,7 @@ class FastAniParameters(BaseModel):
 class FastAniResultData(BaseModel):
     """The data returned by FastANI."""
     ani: Optional[float] = Field(None, ge=0, le=100, example=90.9, title="percentage of ANI")
+    af: Optional[float] = Field(None, ge=0, le=1, example=0.9, title="percentage of AF")
     mapped: Optional[int] = Field(None, ge=1, example=42, title="count of bidirectional fragment mappings")
     total: Optional[int] = Field(None, ge=1, example=100, title="total query fragments")
     status: JobStatus = Field(..., example=JobStatus.QUEUED.value, title="job processing status")
@@ -31,50 +32,7 @@ class FastAniResult(BaseModel):
     """The result of a single FastANI execution."""
     query: str = Field(..., example='GCA_123456789.1', title="GenBank or RefSeq accession")
     reference: str = Field(..., example='GCF_123456789.1', title="GenBank or RefSeq accession")
-    qvr: FastAniResultData
-    rvq: FastAniResultData
-
-    def get_data(self):
-        if self.qvr.ani and self.rvq.ani:
-            cur_ani = max(self.qvr.ani, self.rvq.ani)
-            qvr_af = self.qvr.mapped / self.qvr.total
-            rvq_af = self.rvq.mapped / self.rvq.total
-            if qvr_af > rvq_af:
-                cur_mapped = self.qvr.mapped
-                cur_total = self.qvr.total
-                cur_af = qvr_af
-            else:
-                cur_mapped = self.rvq.mapped
-                cur_total = self.rvq.mapped
-                cur_af = rvq_af
-        elif self.qvr.ani:
-            cur_ani = self.qvr.ani
-            cur_mapped = self.qvr.mapped
-            cur_total = self.qvr.total
-            cur_af = cur_mapped / cur_total
-        elif self.rvq.ani:
-            cur_ani = self.rvq.ani
-            cur_mapped = self.rvq.mapped
-            cur_total = self.rvq.mapped
-            cur_af = cur_mapped / cur_total
-        else:
-            cur_ani = 0
-            cur_af = 0
-            cur_mapped = 0
-            cur_total = 0
-
-        cur_af = round(cur_af, 4)
-
-        if self.qvr.status == self.rvq.status:
-            cur_status = self.qvr.status
-        elif self.qvr.status is JobStatus.FAILED or self.rvq.status is JobStatus.FAILED:
-            cur_status = JobStatus.FAILED
-        elif self.qvr.status is JobStatus.QUEUED or self.rvq.status is JobStatus.QUEUED:
-            cur_status = JobStatus.QUEUED
-        else:
-            cur_status = self.qvr.status
-
-        return cur_ani, cur_af, cur_mapped, cur_total, cur_status
+    data: FastAniResultData
 
 
 class FastAniJobResult(BaseModel):
