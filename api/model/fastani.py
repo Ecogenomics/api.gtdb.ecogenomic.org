@@ -1,9 +1,16 @@
+from enum import Enum
 from typing import List, Optional, Literal
 
 from pydantic import BaseModel, Field
 from rq.job import JobStatus
 
 VERSIONS = Literal['1.0', '1.1', '1.2', '1.3', '1.31', '1.32', '1.33']
+
+
+class FastAniHeatmapDataStatus(Enum):
+    QUEUED = 'queued'  # Job is queued / running.
+    FINISHED = 'finished'  # Finished.
+    ERROR = 'error'  # Errored.
 
 
 class FastAniParameters(BaseModel):
@@ -59,3 +66,21 @@ class FastAniJobRequest(BaseModel):
 class FastAniConfig(BaseModel):
     """Returns the server-configured FastANI parameters."""
     maxPairwise: int = Field(..., example=1000, title="maximum number of pairwise comparisons")
+
+
+class FastAniJobHeatmapData(BaseModel):
+    x: int = Field(...)
+    y: int = Field(...)
+    ani: float = Field(...)
+    af: float = Field(...)
+    mapped: Optional[int] = Field(None)
+    total: Optional[int] = Field(None)
+    status: FastAniHeatmapDataStatus = Field(...)
+
+
+class FastAniJobHeatmap(BaseModel):
+    """A heatmap of results for finished jobs."""
+    data: List[FastAniJobHeatmapData] = Field(..., )
+    xLabels: List[str] = Field(..., )
+    yLabels: List[str] = Field(..., )
+    method: Literal['ani', 'af'] = Field(..., )

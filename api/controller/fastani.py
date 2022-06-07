@@ -1,10 +1,13 @@
 import os
 import subprocess
 import tempfile
+from collections import defaultdict
 from functools import cmp_to_key
-from typing import List, Tuple, Optional, Union, Dict, Collection
+from random import shuffle
+from typing import List, Tuple, Optional, Union, Dict, Collection, Literal
 from typing import TypeVar
 
+import numpy as np
 from redis import Redis
 from rq import Queue, get_current_job
 from rq.exceptions import NoSuchJobError
@@ -16,8 +19,9 @@ from api.config import REDIS_HOST, REDIS_PASS, FASTANI_MAX_PAIRWISE, \
     FASTANI_JOB_RESULT_TTL, FASTANI_JOB_FAIL_TTL, FASTANI_JOB_RETRY, FASTANI_GENOME_DIR
 from api.exceptions import HttpBadRequest, HttpNotFound, HttpInternalServerError
 from api.model.fastani import FastAniJobResult, FastAniParameters, FastAniResult, FastAniJobRequest, FastAniConfig, \
-    FastAniResultData
+    FastAniResultData, FastAniJobHeatmap, FastAniJobHeatmapData, FastAniHeatmapDataStatus
 from api.util.collection import x_prod, deduplicate
+from api.util.matrix import cluster_matrix
 from api.util.ncbi import is_ncbi_accession
 
 
@@ -387,3 +391,71 @@ def can_use_previous_job(job: Optional[Job], refresh: bool = False) -> bool:
     if status == JobStatus.STOPPED.value:
         return False
     return False
+
+
+def _format_job_status(data: Optional[FastAniResultData]) -> FastAniHeatmapDataStatus:
+    """Converts the RQ job status into one interpretable by the frontend."""
+    if data.status in {JobStatus.FAILED, JobStatus.CANCELED, JobStatus.STOPPED}:
+        return FastAniHeatmapDataStatus.ERROR
+    if data.status in {JobStatus.SCHEDULED, JobStatus.QUEUED, JobStatus.STARTED, JobStatus.DEFERRED}:
+        return FastAniHeatmapDataStatus.QUEUED
+    if data.status in {JobStatus.FINISHED}:
+        return FastAniHeatmapDataStatus.FINISHED
+    return FastAniHeatmapDataStatus.ERROR
+
+
+def fastani_heatmap(job_id: str, method: Literal['ani', 'af']):
+    jobs = get_fastani_job_progress(job_id)
+
+    # Index the labels
+    set_group_1 = frozenset(jobs.group_1)
+    set_group_2 = frozenset(jobs.group_2)
+    idx_to_label = sorted(set_group_1 | set_group_2)
+    label_to_idx = {lab: i for i, lab in enumerate(idx_to_label)}
+
+    # Index the data by label
+    d_results = defaultdict(dict)
+    for result in jobs.results:
+        d_results[result.query][result.reference] = result.data
+
+    # Create the output array
+    arr = np.zeros((len(label_to_idx), len(label_to_idx)))
+
+    for result in jobs.results:
+        qry_idx = label_to_idx[result.query]
+        ref_idx = label_to_idx[result.reference]
+        if _format_job_status(result.data) is FastAniHeatmapDataStatus.ERROR:
+            arr[qry_idx, ref_idx] = -1
+        else:
+            arr[qry_idx, ref_idx] = getattr(result.data, method) or 0
+
+    # Cluster the values
+    matrix, dendro_x, dendro_y = cluster_matrix(arr)
+
+    # Create the output
+    out = list()
+    x_labels = [idx_to_label[x] for x in dendro_x['leaves']]
+    y_labels = [idx_to_label[x] for x in dendro_y['leaves']]
+    for x_idx, x_label in enumerate(x_labels):
+        for y_idx, y_label in enumerate(y_labels):
+
+            data: Optional[FastAniResultData] = d_results[x_label].get(y_label)
+            if data is not None:
+                if method == 'ani':
+                    ani = matrix[y_idx, x_idx]
+                    af = data.af if data.af is not None else 0
+                else:
+                    ani = data.ani if data.ani is not None else 0
+                    af = matrix[y_idx, x_idx]
+
+                out.append(FastAniJobHeatmapData(
+                    x=x_idx,
+                    y=y_idx,
+                    ani=ani,
+                    af=af,
+                    mapped=data.mapped,
+                    total=data.total,
+                    status=_format_job_status(data)
+                ))
+    return FastAniJobHeatmap(data=out, method=method, xLabels=x_labels, yLabels=y_labels)
+

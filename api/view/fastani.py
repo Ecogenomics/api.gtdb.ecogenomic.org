@@ -3,8 +3,9 @@ from typing import Literal, Optional
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse, Response
 
-from api.controller.fastani import enqueue_fastani, get_fastani_job_progress, fastani_job_to_rows, get_fastani_config
-from api.model.fastani import FastAniJobResult, FastAniJobRequest, FastAniConfig
+from api.controller.fastani import enqueue_fastani, get_fastani_job_progress, fastani_job_to_rows, get_fastani_config, \
+    fastani_heatmap
+from api.model.fastani import FastAniJobResult, FastAniJobRequest, FastAniConfig, FastAniJobHeatmap
 from api.util.io import rows_to_delim
 
 router = APIRouter(prefix='/fastani', tags=['fastani'])
@@ -32,6 +33,12 @@ async def get_by_id(job_id: str, response: Response, rows: Optional[int] = None,
     return get_fastani_job_progress(job_id, rows, page, sort_by, sort_desc)
 
 
+@router.get('/{job_id}/heatmap/{method}', response_model=FastAniJobHeatmap)
+async def get_job_id_heatmap(job_id: str, method: Literal['ani', 'af'], response: Response):
+    response.headers["Cache-Control"] = "no-cache, no-store, max-age=0"
+    return fastani_heatmap(job_id, method)
+
+
 @router.get('/{job_id}/{fmt}', response_class=StreamingResponse,
             summary='Download the result of a FastANI job in delimited format.')
 async def get_by_id_download(job_id: str, fmt: Literal['csv', 'tsv']):
@@ -41,3 +48,4 @@ async def get_by_id_download(job_id: str, fmt: Literal['csv', 'tsv']):
     response.headers["Content-Disposition"] = f"attachment; filename=gtdb-fastani-{job_id}.{fmt}"
     response.headers["Cache-Control"] = "no-cache, no-store, max-age=0"
     return response
+
