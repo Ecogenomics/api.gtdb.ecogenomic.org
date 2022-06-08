@@ -31,8 +31,8 @@ def taxonomy_search(taxon: str, limit: Optional[int] = 100, db: Session = Depend
 
 
 @router.get('/{taxon}/genomes', response_model=List[str])
-def v_taxon_genomes(taxon: str, db: Session = Depends(get_gtdb_db)):
-    return get_taxon_genomes_in_taxon(taxon, db)
+def v_taxon_genomes(taxon: str, sp_reps_only: Optional[bool] = False, db: Session = Depends(get_gtdb_db)):
+    return get_taxon_genomes_in_taxon(taxon, sp_reps_only, db)
 
 
 @router.get('/{taxon}/previous-releases', response_model=List[TaxonPreviousReleases],

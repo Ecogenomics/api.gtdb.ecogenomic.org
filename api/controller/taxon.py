@@ -91,7 +91,7 @@ def search_for_taxon(taxon: str, limit: Optional[int], db: Session) -> TaxonSear
         return TaxonSearchResponse(matches=all_results)
 
 
-def get_taxon_genomes_in_taxon(taxon: str, db: Session) -> List[str]:
+def get_taxon_genomes_in_taxon(taxon: str, sp_reps_only: bool, db: Session) -> List[str]:
     rank_to_col = {'d__': MetadataTaxonomy.gtdb_domain,
                    'p__': MetadataTaxonomy.gtdb_phylum,
                    'c__': MetadataTaxonomy.gtdb_class,
@@ -105,8 +105,11 @@ def get_taxon_genomes_in_taxon(taxon: str, db: Session) -> List[str]:
 
     query = sa.select([Genome.name]). \
         select_from(sa.join(Genome, MetadataTaxonomy)). \
-        where(col == taxon).\
+        where(col == taxon). \
         order_by(Genome.name)
+
+    if sp_reps_only:
+        query = query.where(MetadataTaxonomy.gtdb_representative == True)
 
     for row in db.execute(query):
         yield str(row.name)
