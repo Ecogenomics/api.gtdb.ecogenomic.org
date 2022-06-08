@@ -1,10 +1,14 @@
-from typing import Literal, Optional
+from typing import Literal
+from typing import Optional
 
 from fastapi import APIRouter
+from fastapi import Depends
 from fastapi.responses import StreamingResponse, Response
+from sqlalchemy.orm import Session
 
 from api.controller.fastani import enqueue_fastani, get_fastani_job_progress, fastani_job_to_rows, get_fastani_config, \
     fastani_heatmap
+from api.db import get_gtdb_db
 from api.model.fastani import FastAniJobResult, FastAniJobRequest, FastAniConfig, FastAniJobHeatmap
 from api.util.io import rows_to_delim
 
@@ -34,9 +38,10 @@ async def get_by_id(job_id: str, response: Response, rows: Optional[int] = None,
 
 
 @router.get('/{job_id}/heatmap/{method}', response_model=FastAniJobHeatmap)
-async def get_job_id_heatmap(job_id: str, method: Literal['ani', 'af'], response: Response):
+async def get_job_id_heatmap(job_id: str, method: Literal['ani', 'af'], response: Response,
+                             db: Session = Depends(get_gtdb_db)):
     response.headers["Cache-Control"] = "no-cache, no-store, max-age=0"
-    return fastani_heatmap(job_id, method)
+    return fastani_heatmap(job_id, method, db)
 
 
 @router.get('/{job_id}/{fmt}', response_class=StreamingResponse,
@@ -48,4 +53,3 @@ async def get_by_id_download(job_id: str, fmt: Literal['csv', 'tsv']):
     response.headers["Content-Disposition"] = f"attachment; filename=gtdb-fastani-{job_id}.{fmt}"
     response.headers["Cache-Control"] = "no-cache, no-store, max-age=0"
     return response
-

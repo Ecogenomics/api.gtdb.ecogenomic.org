@@ -83,4 +83,7 @@ class FastAniJobHeatmap(BaseModel):
     data: List[FastAniJobHeatmapData] = Field(..., )
     xLabels: List[str] = Field(..., )
     yLabels: List[str] = Field(..., )
+    xSpecies: List[str] = Field(..., )
+    ySpecies: List[str] = Field(..., )
     method: Literal['ani', 'af'] = Field(..., )
+    spReps: List[str] = Field(..., )

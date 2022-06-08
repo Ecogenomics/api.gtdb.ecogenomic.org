@@ -3,20 +3,23 @@ import subprocess
 import tempfile
 from collections import defaultdict
 from functools import cmp_to_key
-from random import shuffle
-from typing import List, Tuple, Optional, Union, Dict, Collection, Literal
+from typing import List
+from typing import Tuple, Optional, Union, Dict, Collection, Literal
 from typing import TypeVar
 
 import numpy as np
+import sqlalchemy as sa
 from redis import Redis
 from rq import Queue, get_current_job
 from rq.exceptions import NoSuchJobError
 from rq.job import Job, JobStatus
 from rq.queue import EnqueueData
+from sqlalchemy.orm import Session
 
 from api.config import REDIS_HOST, REDIS_PASS, FASTANI_MAX_PAIRWISE, \
     FASTANI_Q_NORMAL, FASTANI_Q_PRIORITY, FASTANI_PRIORITY_SECRET, FASTANI_BIN, FASTANI_JOB_TIMEOUT, \
     FASTANI_JOB_RESULT_TTL, FASTANI_JOB_FAIL_TTL, FASTANI_JOB_RETRY, FASTANI_GENOME_DIR
+from api.db.models import MetadataTaxonomy, Genome
 from api.exceptions import HttpBadRequest, HttpNotFound, HttpInternalServerError
 from api.model.fastani import FastAniJobResult, FastAniParameters, FastAniResult, FastAniJobRequest, FastAniConfig, \
     FastAniResultData, FastAniJobHeatmap, FastAniJobHeatmapData, FastAniHeatmapDataStatus
@@ -404,7 +407,7 @@ def _format_job_status(data: Optional[FastAniResultData]) -> FastAniHeatmapDataS
     return FastAniHeatmapDataStatus.ERROR
 
 
-def fastani_heatmap(job_id: str, method: Literal['ani', 'af']):
+def fastani_heatmap(job_id: str, method: Literal['ani', 'af'], db: Session):
     jobs = get_fastani_job_progress(job_id)
 
     # Index the labels
@@ -412,6 +415,19 @@ def fastani_heatmap(job_id: str, method: Literal['ani', 'af']):
     set_group_2 = frozenset(jobs.group_2)
     idx_to_label = sorted(set_group_1 | set_group_2)
     label_to_idx = {lab: i for i, lab in enumerate(idx_to_label)}
+
+    # Get the species of the query and reference genomes
+    query = sa.select([Genome.id_at_source,
+                       MetadataTaxonomy.gtdb_species,
+                       MetadataTaxonomy.gtdb_representative]). \
+        select_from(sa.join(Genome, MetadataTaxonomy)). \
+        where(Genome.id_at_source.in_(set_group_1 | set_group_2))
+    gid_to_species = dict()
+    gid_is_sp_rep = set()
+    for row in db.execute(query):
+        gid_to_species[row.id_at_source] = row.gtdb_species
+        if row.gtdb_representative:
+            gid_is_sp_rep.add(row.id_at_source)
 
     # Index the data by label
     d_results = defaultdict(dict)
@@ -436,6 +452,8 @@ def fastani_heatmap(job_id: str, method: Literal['ani', 'af']):
     out = list()
     x_labels = [idx_to_label[x] for x in dendro_x['leaves']]
     y_labels = [idx_to_label[x] for x in dendro_y['leaves']]
+    x_species = [gid_to_species.get(x, 'n/a') for x in x_labels]
+    y_species = [gid_to_species.get(x, 'n/a') for x in y_labels]
     for x_idx, x_label in enumerate(x_labels):
         for y_idx, y_label in enumerate(y_labels):
 
@@ -457,5 +475,12 @@ def fastani_heatmap(job_id: str, method: Literal['ani', 'af']):
                     total=data.total,
                     status=_format_job_status(data)
                 ))
-    return FastAniJobHeatmap(data=out, method=method, xLabels=x_labels, yLabels=y_labels)
-
+    return FastAniJobHeatmap(
+        data=out,
+        method=method,
+        xLabels=x_labels,
+        yLabels=y_labels,
+        xSpecies=x_species,
+        ySpecies=y_species,
+        spReps=sorted(gid_is_sp_rep)
+    )
