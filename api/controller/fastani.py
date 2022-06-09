@@ -436,17 +436,26 @@ def fastani_heatmap(job_id: str, method: Literal['ani', 'af'], db: Session):
 
     # Create the output array
     arr = np.zeros((len(label_to_idx), len(label_to_idx)))
-
+    d_status_cnt = defaultdict(lambda: 0)
     for result in jobs.results:
         qry_idx = label_to_idx[result.query]
         ref_idx = label_to_idx[result.reference]
-        if _format_job_status(result.data) is FastAniHeatmapDataStatus.ERROR:
+        cur_status = _format_job_status(result.data)
+        d_status_cnt[cur_status] += 1
+        if cur_status is FastAniHeatmapDataStatus.ERROR:
             arr[qry_idx, ref_idx] = -1
         else:
             arr[qry_idx, ref_idx] = getattr(result.data, method) or 0
+    pct_done = round(100 * (1 - d_status_cnt[FastAniHeatmapDataStatus.QUEUED] / len(jobs.results)), 2)
 
-    # Cluster the values
-    matrix, dendro_x, dendro_y = cluster_matrix(arr)
+    # If there is only one observation then just return the value
+    if arr.shape == (1, 1):
+        matrix = arr
+        dendro_x = {'leaves': [0]}
+        dendro_y = {'leaves': [0]}
+    else:
+        # Cluster the values
+        matrix, dendro_x, dendro_y = cluster_matrix(arr)
 
     # Create the output
     out = list()
@@ -475,6 +484,8 @@ def fastani_heatmap(job_id: str, method: Literal['ani', 'af'], db: Session):
                     total=data.total,
                     status=_format_job_status(data)
                 ))
+
+    # Return the object
     return FastAniJobHeatmap(
         data=out,
         method=method,
@@ -482,5 +493,6 @@ def fastani_heatmap(job_id: str, method: Literal['ani', 'af'], db: Session):
         yLabels=y_labels,
         xSpecies=x_species,
         ySpecies=y_species,
-        spReps=sorted(gid_is_sp_rep)
+        spReps=sorted(gid_is_sp_rep),
+        pctDone=pct_done,
     )
