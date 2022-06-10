@@ -6,7 +6,7 @@ authors = ["Aaron Mussig <aaronmussig@gmail.com>"]
 license = "GPL-3"
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = ">=3.10,<3.11"
 rq = "^1.10.1"
 redis = "^4.1.1"
 hiredis = "^2.0.0"
@@ -22,6 +22,9 @@ python-multipart = "^0.0.5"
 DendroPy = "^4.5.2"
 aiosmtplib = "^1.1.6"
 fastani = "^1.0.1"
+scipy = "^1.8.1"
+numpy = "^1.22.4"
+matplotlib = "^3.5.2"
 
 [tool.poetry.dev-dependencies]
 

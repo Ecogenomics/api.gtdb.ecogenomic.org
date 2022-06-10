@@ -1,10 +1,15 @@
-from typing import Literal, Optional
+from typing import Literal
+from typing import Optional
 
 from fastapi import APIRouter
+from fastapi import Depends
 from fastapi.responses import StreamingResponse, Response
+from sqlalchemy.orm import Session
 
-from api.controller.fastani import enqueue_fastani, get_fastani_job_progress, fastani_job_to_rows, get_fastani_config
-from api.model.fastani import FastAniJobResult, FastAniJobRequest, FastAniConfig
+from api.controller.fastani import enqueue_fastani, get_fastani_job_progress, fastani_job_to_rows, get_fastani_config, \
+    fastani_heatmap
+from api.db import get_gtdb_db
+from api.model.fastani import FastAniJobResult, FastAniJobRequest, FastAniConfig, FastAniJobHeatmap
 from api.util.io import rows_to_delim
 
 router = APIRouter(prefix='/fastani', tags=['fastani'])
@@ -30,6 +35,13 @@ async def get_by_id(job_id: str, response: Response, rows: Optional[int] = None,
     sort_by = sortBy.split(',') if sortBy is not None else None
     sort_desc = [x == 'true' for x in sortDesc.split(',')] if sortDesc is not None else None
     return get_fastani_job_progress(job_id, rows, page, sort_by, sort_desc)
+
+
+@router.get('/{job_id}/heatmap/{method}', response_model=FastAniJobHeatmap)
+async def get_job_id_heatmap(job_id: str, method: Literal['ani', 'af'], response: Response,
+                             db: Session = Depends(get_gtdb_db)):
+    response.headers["Cache-Control"] = "no-cache, no-store, max-age=0"
+    return fastani_heatmap(job_id, method, db)
 
 
 @router.get('/{job_id}/{fmt}', response_class=StreamingResponse,
