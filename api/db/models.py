@@ -200,11 +200,11 @@ class MetadataRna(GtdbBase):
 
 
 class MetadataTypeMaterial(GtdbBase):
-    __tablename__ = 'metadata_type_material'
+    __tablename__ = 'metadata_type_material_tmp'
 
     id = Column(ForeignKey('genomes.id'), primary_key=True)
-    gtdb_type_designation = Column(Text)
-    gtdb_type_designation_sources = Column(Text)
+    gtdb_type_designation_ncbi_taxa = Column(Text)
+    gtdb_type_designation_ncbi_taxa_sources = Column(Text)
     lpsn_type_designation = Column(Text)
     dsmz_type_designation = Column(Text)
     lpsn_priority_year = Column(Integer)
@@ -212,7 +212,7 @@ class MetadataTypeMaterial(GtdbBase):
 
 
 class GtdbTypeView(GtdbBase):
-    __tablename__ = 'gtdb_type_view'
+    __tablename__ = 'gtdb_type_view_tmp'
 
     id = Column(Integer, primary_key=True)
     gtdb_genus_type_species = Column(Boolean)
@@ -259,8 +259,16 @@ class User(GtdbBase):
     role = relationship('UserRole')
 
 
+class GtdbTypeSpeciesView(GtdbBase):
+    __tablename__ = 'gtdb_type_species_view_tmp'
+
+    id = Column(Integer, primary_key=True)
+    gtdb_type_designation_gtdb_taxa = Column(Text)
+    gtdb_genus_type_species = Column(Boolean)
+
+
 class MetadataView(GtdbBase):
-    __tablename__ = 'metadata_view'
+    __tablename__ = 'metadata_view_tmp'
 
     id = Column(Integer, primary_key=True)
     accession = Column(Text)
@@ -410,8 +418,8 @@ class MetadataView(GtdbBase):
     gtdb_species_type_strain = Column(Boolean)
     gtdb_cluster_size = Column(BIGINT)
     gtdb_clustered_genomes = Column(Text)
-    gtdb_type_designation = Column(Text)
-    gtdb_type_designation_sources = Column(Text)
+    gtdb_type_designation_ncbi_taxa = Column(Text)
+    gtdb_type_designation_ncbi_taxa_sources = Column(Text)
     lpsn_type_designation = Column(Text)
     dsmz_type_designation = Column(Text)
     lpsn_priority_year = Column(Integer)

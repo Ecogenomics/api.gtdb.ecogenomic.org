@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from api.config import GTDB_RELEASES
 from api.db.models import SurveyGenomes, GtdbWebTaxonHist, GtdbWebLpsnUrl, Genome, MetadataNcbi, MetadataGene, \
-    MetadataNucleotide, MetadataTaxonomy, MetadataTypeMaterial, GtdbWebGenomeTaxId, GtdbTypeView
+    MetadataNucleotide, MetadataTaxonomy, MetadataTypeMaterial, GtdbWebGenomeTaxId, GtdbTypeView, GtdbTypeSpeciesView
 from api.exceptions import HttpNotFound, HttpBadRequest
 from api.model.genome import GenomeMetadata, GenomeTaxonHistory, GenomeCard, GenomeBase, GenomeMetadataNucleotide, \
     GenomeMetadataGene, GenomeMetadataNcbi, GenomeMetadataTaxonomy, GenomeNcbiTaxon, GenomeMetadataTypeMaterial
@@ -79,8 +79,8 @@ def rank_count(rank, db_gtdb):
     # Query for the taxonomy history
     query = (
         sa.select([sa.func.count('*')]).
-            select_from(MetadataTaxonomy).
-            where(rank_to_col[rank[0:3]] == rank)
+        select_from(MetadataTaxonomy).
+        where(rank_to_col[rank[0:3]] == rank)
     )
     cnt = db_gtdb.execute(query).scalar()
     return {'count': cnt}
@@ -90,9 +90,9 @@ def taxonomy_species_cluster_stats(species, db_gtdb):
     res_rep_qry = (
         sa.select([MetadataNcbi.ncbi_genbank_assembly_accession.label('name'),
                    MetadataTaxonomy.gtdb_representative]).
-            select_from(sa.join(Genome, MetadataTaxonomy).join(MetadataNcbi)).
-            where(MetadataTaxonomy.gtdb_species == species).
-            where(MetadataTaxonomy.gtdb_genome_representative != None)
+        select_from(sa.join(Genome, MetadataTaxonomy).join(MetadataNcbi)).
+        where(MetadataTaxonomy.gtdb_species == species).
+        where(MetadataTaxonomy.gtdb_genome_representative != None)
     )
     qry_out = db_gtdb.execute(res_rep_qry)
     rows = [(dict(row)) for row in qry_out]
@@ -124,6 +124,8 @@ def genome_card(accession: str, db_gtdb: Session, db_web: Session) -> GenomeCard
     metadata_taxonomy = db_gtdb.query(MetadataTaxonomy).filter_by(id=genome.id).first()
     metadata_type_material = db_gtdb.query(MetadataTypeMaterial).filter_by(id=genome.id).first()
     gtdb_type_view = db_gtdb.query(GtdbTypeView).filter_by(id=genome.id).first()
+
+    gtdb_type_species_view = db_gtdb.query(GtdbTypeSpeciesView).filter_by(id=genome.id).first()
 
     m = re.search('\((UBA\d+)\)', genome.name)
     subunit_summary_list = []
@@ -215,8 +217,9 @@ def genome_card(accession: str, db_gtdb: Session, db_web: Session) -> GenomeCard
                                            coding_density=metadata_gene.coding_density)
 
     out_metadata_type_material = GenomeMetadataTypeMaterial(
-        gtdbTypeDesignation=metadata_type_material.gtdb_type_designation,
-        gtdbTypeDesignationSources=metadata_type_material.gtdb_type_designation_sources,
+        gtdbTypeDesignationNcbiTaxa=metadata_type_material.gtdb_type_designation_ncbi_taxa,
+        gtdbTypeDesignationGtdbTaxa=gtdb_type_species_view.gtdb_type_designation_gtdb_taxa,
+        gtdbTypeDesignationNcbiTaxaSources=metadata_type_material.gtdb_type_designation_ncbi_taxa_sources,
         lpsnTypeDesignation=metadata_type_material.lpsn_type_designation,
         dsmzTypeDesignation=metadata_type_material.dsmz_type_designation,
         lpsnPriorityYear=metadata_type_material.lpsn_priority_year,
@@ -281,7 +284,7 @@ def genome_card(accession: str, db_gtdb: Session, db_web: Session) -> GenomeCard
                       metadata_gene=out_metadata_gene,
                       metadata_ncbi=out_metadata_ncbi,
                       metadataTaxonomy=out_metadata_taxonomy,
-                      gtdbTypeDesignation=metadata_type_material.gtdb_type_designation,
+                      gtdbTypeDesignation=gtdb_type_species_view.gtdb_type_designation_gtdb_taxa,
                       subunit_summary=subunit_summary,
                       speciesClusterCount=species_cluster_count,
                       metadata_type_material=out_metadata_type_material,
