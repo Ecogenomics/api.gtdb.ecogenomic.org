@@ -20,6 +20,7 @@ class GenomeTaxonHistory(BaseModel):
     s: str = Field(..., description='species', example='Escherichia coli')
 
 
+
 class GenomeBase(BaseModel):
     accession: Optional[str] = Field(None)
     name: Optional[str] = Field(None)
@@ -37,7 +38,6 @@ class GenomeMetadataNucleotide(BaseModel):
     gc_percentage: Optional[float] = Field(None)
     ambiguous_bases: Optional[int] = Field(None)
 
-
 class GenomeMetadataGene(BaseModel):
     checkm_completeness: Optional[str] = Field(None)
     checkm_contamination: Optional[str] = Field(None)
@@ -47,7 +47,6 @@ class GenomeMetadataGene(BaseModel):
     lsu_23s_count: Optional[str] = Field(None)
     protein_count: Optional[str] = Field(None)
     coding_density: Optional[str] = Field(None)
-
 
 class GenomeMetadataNcbi(BaseModel):
     ncbi_genbank_assembly_accession: Optional[str] = Field(None)
@@ -96,15 +95,15 @@ class GenomeMetadataTaxonomy(BaseModel):
     gtdbSpecies: Optional[str] = Field(None)
 
 
+
 class GenomeNcbiTaxon(BaseModel):
     taxon: str = Field(...)
     taxonId: str = Field(None)
 
 
 class GenomeMetadataTypeMaterial(BaseModel):
-    gtdbTypeDesignationNcbiTaxa: Optional[str] = Field(None)
-    gtdbTypeDesignationGtdbTaxa: Optional[str] = Field(None)
-    gtdbTypeDesignationNcbiTaxaSources: Optional[str] = Field(None)
+    gtdbTypeDesignation: Optional[str] = Field(None)
+    gtdbTypeDesignationSources: Optional[str] = Field(None)
     lpsnTypeDesignation: Optional[str] = Field(None)
     dsmzTypeDesignation: Optional[str] = Field(None)
     lpsnPriorityYear: Optional[int] = Field(None)
@@ -127,3 +126,5 @@ class GenomeCard(BaseModel):
     link_ncbi_taxonomy_unfiltered: Optional[str] = Field(None)
     ncbiTaxonomyFiltered: Optional[List[GenomeNcbiTaxon]] = Field(None)
     ncbiTaxonomyUnfiltered: Optional[List[GenomeNcbiTaxon]] = Field(None)
+
+
