@@ -478,6 +478,7 @@ class DbGtdbTree(GtdbWebBase):
     type = Column(Text)
     is_rep = Column(Boolean)
     type_material = Column(Text)
+    n_desc_children = Column(Integer)
 
 
 class DbGtdbTreeChildren(GtdbWebBase):

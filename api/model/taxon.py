@@ -7,6 +7,7 @@ class TaxonDescendants(BaseModel):
     """The response returned from the species cluster endpoint."""
     taxon: str = Field(..., description='the name of this taxon', example='d__Archaea')
     total: int = Field(..., description='the total number of genomes in GTDB with this taxon', example=4316)
+    nDescChildren: Optional[int] = Field(None, description='the total number of immediate descendant taxa', example=4316)
     isGenome: Optional[bool] = Field(None)
     isRep: Optional[bool] = Field(None)
     typeMaterial: Optional[str] = Field(None)
