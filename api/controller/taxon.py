@@ -26,7 +26,8 @@ def get_taxon_descendants(taxon: str, db: Session) -> List[TaxonDescendants]:
     # Get the child info
     children_query = sa.select([DbGtdbTree.taxon, DbGtdbTree.total,
                                 DbGtdbTree.type, DbGtdbTree.is_rep,
-                                DbGtdbTree.type_material]) \
+                                DbGtdbTree.type_material,
+                                DbGtdbTree.n_desc_children]) \
         .filter(DbGtdbTreeChildren.child_id == DbGtdbTree.id) \
         .where(DbGtdbTreeChildren.parent_id == parent_id) \
         .order_by(DbGtdbTreeChildren.order_id)
@@ -36,7 +37,8 @@ def get_taxon_descendants(taxon: str, db: Session) -> List[TaxonDescendants]:
                                total=result.total,
                                isGenome=result.type == 'genome',
                                isRep=result.is_rep,
-                               typeMaterial=result.type_material)
+                               typeMaterial=result.type_material,
+                               nDescChildren=result.n_desc_children)
 
 
 def search_for_taxon(taxon: str, limit: Optional[int], db: Session) -> TaxonSearchResponse:
