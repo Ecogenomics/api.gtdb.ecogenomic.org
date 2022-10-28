@@ -12,17 +12,24 @@ from api.model.genome import GenomeMetadata, GenomeTaxonHistory, GenomeCard, Gen
     GenomeMetadataGene, GenomeMetadataNcbi, GenomeMetadataTaxonomy, GenomeNcbiTaxon, GenomeMetadataTypeMaterial
 from api.util.accession import canonical_gid
 
+RE_SURVEY = re.compile(r'((?:GC[FA]_)?\d{9}(?:\.\d)?)')
 
-def is_surveillance_genome(gid: str, db: Session) -> bool:
+
+def is_surveillance_genome(gid: str, db: Session) -> Optional[str]:
     # Check if this is a surveillance genome
-    query = sa.select([SurveyGenomes.canonical_gid]).where(SurveyGenomes.canonical_gid == gid)
-    results = db.execute(query).fetchall()
-    return len(results) > 0
+    hit = RE_SURVEY.search(gid)
+    if hit:
+        query = sa.select([SurveyGenomes.canonical_gid]).where(SurveyGenomes.canonical_gid.contains(hit.group(1)))
+        results = db.execute(query).fetchone()
+        if results:
+            return results.canonical_gid.strip()
+    return None
 
 
 def genome_metadata(gid: str, db: Session) -> GenomeMetadata:
-    return GenomeMetadata(accession=gid,
-                          isNcbiSurveillance=is_surveillance_genome(gid, db))
+    survey_hit = is_surveillance_genome(gid, db)
+    return GenomeMetadata(accession=survey_hit or gid,
+                          isNcbiSurveillance=survey_hit is not None)
 
 
 def genome_taxon_history(gid: str, db: Session) -> List[GenomeTaxonHistory]:
@@ -79,8 +86,8 @@ def rank_count(rank, db_gtdb):
     # Query for the taxonomy history
     query = (
         sa.select([sa.func.count('*')]).
-            select_from(MetadataTaxonomy).
-            where(rank_to_col[rank[0:3]] == rank)
+        select_from(MetadataTaxonomy).
+        where(rank_to_col[rank[0:3]] == rank)
     )
     cnt = db_gtdb.execute(query).scalar()
     return {'count': cnt}
@@ -90,9 +97,9 @@ def taxonomy_species_cluster_stats(species, db_gtdb):
     res_rep_qry = (
         sa.select([MetadataNcbi.ncbi_genbank_assembly_accession.label('name'),
                    MetadataTaxonomy.gtdb_representative]).
-            select_from(sa.join(Genome, MetadataTaxonomy).join(MetadataNcbi)).
-            where(MetadataTaxonomy.gtdb_species == species).
-            where(MetadataTaxonomy.gtdb_genome_representative != None)
+        select_from(sa.join(Genome, MetadataTaxonomy).join(MetadataNcbi)).
+        where(MetadataTaxonomy.gtdb_species == species).
+        where(MetadataTaxonomy.gtdb_genome_representative != None)
     )
     qry_out = db_gtdb.execute(res_rep_qry)
     rows = [(dict(row)) for row in qry_out]
