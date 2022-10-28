@@ -1,3 +1,20 @@
+# [2.2.0](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.1.0...v2.2.0) (2022-10-28)
+
+
+### Bug Fixes
+
+* **survey:** Add partial searches for surveillance genome to result. ([3f7d16a](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/3f7d16ab5b5175aef211c0a431c988e31d970276))
+
+
+### Features
+
+* **tree:** Add taxon count to tree view. ([a15c05a](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/a15c05aba6afa2177f16fc5522db3dc86adbab40))
+
+
+### Reverts
+
+* Revert "fix(genome): Updated GTDB type material designation (tmp)." ([a4fafda](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/a4fafda5c3f88a639ee1f5b5ed7a6d3fd7704e38))
+
 # [2.1.0](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.0.2...v2.1.0) (2022-06-10)
 
 
