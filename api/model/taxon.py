@@ -12,6 +12,7 @@ class TaxonDescendants(BaseModel):
     isRep: Optional[bool] = Field(None)
     typeMaterial: Optional[str] = Field(None)
     bergeysUrl: Optional[str] = Field(None)
+    seqcodeUrl: Optional[str] = Field(None)
 
 
 class TaxonSearchResponse(BaseModel):

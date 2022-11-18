@@ -480,6 +480,7 @@ class DbGtdbTree(GtdbWebBase):
     type_material = Column(Text)
     n_desc_children = Column(Integer)
     bergeys_url = Column(Text)
+    seqcode_url = Column(Text)
 
 
 class DbGtdbTreeChildren(GtdbWebBase):

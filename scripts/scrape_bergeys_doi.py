@@ -54,6 +54,11 @@ def main():
     matches = set()
     for title, dois in d_hits.items():
         title_old = title
+
+
+        if title.startswith('<i>') and title.endswith('</i>'):
+            print()
+
         if title.endswith('.'):
             title = title[:-1]
 
@@ -95,6 +100,14 @@ def main():
     with open('/tmp/cmds_to_run.txt', 'w') as f:
         for row_id, url in sorted(rows):
             f.write(f"UPDATE gtdb_tree SET bergeys_url='{url}' WHERE id={row_id};\n")
+
+    with open('/tmp/no_mapping.txt', 'w') as f:
+        f.write('\n'.join(sorted(no_match)))
+
+    print(len(no_match))
+    print(f'No matches: {len(no_match):,}')
+    print(f'Matchess: {len(matches):,}')
+    print(f'Total: {len(d_hits):,}')
 
     return
 
