@@ -107,7 +107,7 @@ async def send_request_to_plausible(request: Request):
     if ENV_NAME is Env.PROD:
         domain = 'api.gtdb.ecogenomic.org'
     elif ENV_NAME is Env.DEV:
-        domain = 'api-dev.gtdb.ecogenomic.org'
+        domain = 'api.gtdb-dev.ecogenomic.org'
     else:
         return
 
