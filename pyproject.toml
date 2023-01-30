@@ -25,6 +25,7 @@ fastani = "^1.0.1"
 scipy = "^1.8.1"
 numpy = "^1.22.4"
 matplotlib = "^3.5.2"
+httpx = "^0.23.3"
 
 [tool.poetry.dev-dependencies]
 

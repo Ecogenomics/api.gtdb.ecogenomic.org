@@ -479,6 +479,8 @@ class DbGtdbTree(GtdbWebBase):
     is_rep = Column(Boolean)
     type_material = Column(Text)
     n_desc_children = Column(Integer)
+    bergeys_url = Column(Text)
+    seqcode_url = Column(Text)
 
 
 class DbGtdbTreeChildren(GtdbWebBase):
