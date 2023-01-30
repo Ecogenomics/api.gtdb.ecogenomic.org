@@ -1,3 +1,14 @@
+# [2.3.0](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.2.0...v2.3.0) (2023-01-30)
+
+
+### Features
+
+* **plausible:** Add plausible analytics. ([0d33a0b](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/0d33a0b93617ff058cb1f97c066d4e38ee0fde35))
+* **plausible:** Add plausible analytics. ([fa80882](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/fa808829b1b85be4780f189527248290f8af753d))
+* **plausible:** Add plausible analytics. ([25c6b07](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/25c6b0744c5c51bc4d13c6842d50dd294dfbfb53))
+* **tree:** Add Bergey's Manual column to taxon schema. ([013855c](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/013855c93281f3db7b3536d6043cc01e2f6c8f8a))
+* **tree:** Add SeqCode column to taxon schema. ([197d97c](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/197d97c68b24eec35c8876bcbbad807d0253448b))
+
 # [2.2.0](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.1.0...v2.2.0) (2022-10-28)
 
 
