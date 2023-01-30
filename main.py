@@ -4,6 +4,8 @@ if __name__ == '__main__':
 
     load_dotenv()
 
+import asyncio
+
 import httpx
 import uvicorn
 from fastapi import FastAPI, Request
@@ -104,46 +106,45 @@ if ENV_NAME is Env.LOCAL:
 async def send_request_to_plausible(request: Request):
     # https://plausible.io/docs/custom-event-goals
     #
-    if ENV_NAME is Env.PROD:
-        domain = 'api.gtdb.ecogenomic.org'
-    elif ENV_NAME is Env.DEV:
-        domain = 'api.gtdb-dev.ecogenomic.org'
-    else:
-        return
+    try:
+        if ENV_NAME is Env.PROD:
+            domain = 'api.gtdb.ecogenomic.org'
+        elif ENV_NAME is Env.DEV:
+            domain = 'api.gtdb-dev.ecogenomic.org'
+        else:
+            print('Running local - skipping analytics.')
+            return
 
-    url = 'https://plausible.gtdb.ecogenomic.org/api/event'
-    user_agent = request.headers.get('user-agent')
-    x_forwarded_for = request.headers.get('x-forwarded-for')
+        url = 'https://plausible.gtdb.ecogenomic.org/api/event'
+        user_agent = request.headers.get('user-agent')
+        x_forwarded_for = request.headers.get('x-forwarded-for')
 
-    if x_forwarded_for is None:
-        print('Unable to determine IP address for plausible analytics.')
-        return
+        if x_forwarded_for is None:
+            print('Unable to determine IP address for plausible analytics.')
+            return
 
-    headers = {
-        'User-Agent': user_agent,
-        'X-Forwarded-For': x_forwarded_for,
-        'Content-Type': 'application/json'
-    }
-    data = {
-        'name': 'pageview',
-        'url': f'https://{domain}{request.get("path", "")}',
-        'domain': domain,
-        'props': {
-            'method': request.method
+        headers = {
+            'User-Agent': user_agent,
+            'X-Forwarded-For': x_forwarded_for,
+            'Content-Type': 'application/json'
         }
-    }
-    async with httpx.AsyncClient() as client:
-        r = await client.post(url, headers=headers, json=data, timeout=2.0)
+        data = {
+            'name': 'pageview',
+            'url': f'https://{domain}{request.get("path", "")}',
+            'domain': domain,
+            'props': {
+                'method': request.method
+            }
+        }
+        httpx.post(url, headers=headers, json=data, timeout=2.0)
+    except Exception as e:
+        print(f'Unable to send to plausible: {e}')
     return
 
 
 @app.middleware("http")
 async def intercept_http_request(request: Request, call_next):
-    response = await call_next(request)
-    try:
-        await send_request_to_plausible(request)
-    except Exception as e:
-        print(f'Unable to send to plausible: {e}')
+    response, _ = await asyncio.gather(call_next(request), send_request_to_plausible(request))
     return response
 
 
