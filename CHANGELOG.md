@@ -1,3 +1,10 @@
+# [2.5.0](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.4.0...v2.5.0) (2023-02-15)
+
+
+### Features
+
+* **sitemap:** Add endpoint for sitemap generation. ([31699f7](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/31699f7ff1d6a0bb6015fada5843b2d0f8131631))
+
 # [2.4.0](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.3.0...v2.4.0) (2023-02-15)
 
 
