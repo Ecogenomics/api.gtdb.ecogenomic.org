@@ -1,16 +1,13 @@
-from typing import Optional
 from urllib.parse import quote
 
 from fastapi import APIRouter
 from fastapi import Depends
 from sqlalchemy.orm import Session
-from api.db import get_gtdb_db
-from api.controller.sankey import get_search_sankey
-from api.model.sankey import SankeySearchRequest, SankeySearchResponse
-from api.view.species import v_species_all
-from api.view.genomes import v_genomes_all
-from api.util.collection import iter_batches
 
+from api.db import get_gtdb_db
+from api.util.collection import iter_batches
+from api.view.genomes import v_genomes_all
+from api.view.species import v_species_all
 
 router = APIRouter(prefix='/sitemap', tags=['sitemap'])
 
@@ -19,7 +16,9 @@ MAIN_PAGES = ['about', 'advanced', 'attributions', 'browsers', 'contact',
               'tools/fastani', 'stats/r89', 'stats/r95', 'stats/r202',
               'stats/r207', 'taxon-history', 'tools', 'tree']
 
-MAX_ITEMS = 10
+MAX_ITEMS = 4000
+
+
 @router.get('', summary='Generate the sitemap content for the GTDB website.')
 async def gtdb(db: Session = Depends(get_gtdb_db)):
     out = dict()
@@ -44,9 +43,8 @@ async def gtdb(db: Session = Depends(get_gtdb_db)):
             ])
         out[species_key].append('</urlset>')
         out[species_key] = '\n'.join(out[species_key])
-        
+
         species_i += 1
-        break
 
     genome_i = 0
     for genome_batch in iter_batches(all_genomes, MAX_ITEMS):
@@ -65,8 +63,6 @@ async def gtdb(db: Session = Depends(get_gtdb_db)):
         out[genome_key] = '\n'.join(out[genome_key])
 
         genome_i += 1
-        break
-
 
     # Generate the sitemap file (general)
     out['sitemap-general.xml'] = [
