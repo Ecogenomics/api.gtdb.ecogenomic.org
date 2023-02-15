@@ -14,7 +14,7 @@ from fastapi.responses import PlainTextResponse
 
 from api import __version__
 from api.config import Env, ENV_NAME
-from api.view import fastani, taxonomy, species, taxon, sankey, search, genome, advanced, util, genomes, status, meta
+from api.view import fastani, taxonomy, species, taxon, sankey, search, genome, advanced, util, genomes, status, meta, sitemap
 
 # Documentation
 tags_metadata = [
@@ -62,6 +62,10 @@ tags_metadata = [
         "name": "meta",
         "description": "Methods that relate to the API.",
     },
+    {
+        "name": "sitemap",
+        "description": "Returns sitemap related data."
+    }
 ]
 
 # Initialise the app
@@ -91,6 +95,7 @@ app.include_router(advanced.router)
 app.include_router(util.router)
 app.include_router(status.router)
 app.include_router(meta.router)
+app.include_router(sitemap.router)
 
 # Add CORS
 if ENV_NAME is Env.LOCAL:

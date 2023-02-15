@@ -27,3 +27,10 @@ def deduplicate(items: Collection[T]) -> List[T]:
             seen.add(item)
             out.append(item)
     return out
+
+
+def iter_batches(iterable, n=1):
+    """Partition a collection into batches of size n."""
+    length = len(iterable)
+    for ndx in range(0, length, n):
+        yield iterable[ndx:min(ndx + n, length)]
