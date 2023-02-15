@@ -5,7 +5,6 @@ from collections import defaultdict
 from functools import cmp_to_key
 from typing import List
 from typing import Tuple, Optional, Union, Dict, Collection, Literal
-from typing import TypeVar
 
 import numpy as np
 import sqlalchemy as sa
@@ -136,10 +135,7 @@ def get_unique_job_ids(group_a: List[str], group_b: List[str],
     return out
 
 
-T = TypeVar('T')
-
-
-def get_existing_jobs(items: Collection[T], conn: Redis) -> Dict[T, Job]:
+def get_existing_jobs(items: Collection[str], conn: Redis) -> Dict[str, Job]:
     """Returns a dictionary containing the Jobs if they exist."""
     out = dict()
     to_fetch = sorted(items)
@@ -365,7 +361,7 @@ def run_fastani(q_path: str, r_path: str, kmer: int, frag_len: int, min_frag: in
             return float(line[2]), int(line[3]), int(line[4])
 
 
-def get_unique_fastani_job_id(gid_a: str, gid_b: str, params: FastAniParameters):
+def get_unique_fastani_job_id(gid_a: str, gid_b: str, params: FastAniParameters) -> str:
     """Generates a unique job id for FastANI jobs."""
     key = ['ANI', gid_a, gid_b, params.frag_len, params.kmer,
            params.min_frag, params.min_frac, params.version]

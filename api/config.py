@@ -31,7 +31,15 @@ POSTGRES_PASS = os.environ.get('POSTGRES_PASS', '')
 REDIS_HOST = os.environ.get('REDIS_HOST', 'localhost')
 REDIS_PASS = os.environ.get('REDIS_PASS', '')
 
+# ------------------------------------------------------------------------------
+# CAPTCHA
+# ------------------------------------------------------------------------------
+
 GTDB_CAPTCHA_SECRET_KEY = os.environ.get('GTDB_CAPTCHA_SECRET_KEY', '')
+
+# ------------------------------------------------------------------------------
+# SMTP
+# ------------------------------------------------------------------------------
 
 SMTP_FROM = os.environ.get('SMTP_FROM', '')
 SMTP_SERV = os.environ.get('SMTP_SERV', '')
@@ -66,13 +74,13 @@ FASTANI_Q_NORMAL = os.environ.get('FASTANI_Q_NORMAL', 'low')
 FASTANI_MAX_PAIRWISE = 1000
 
 # Maximum runtime before job is marked as failed (seconds)
-FASTANI_JOB_TIMEOUT = 60 * 10
+FASTANI_JOB_TIMEOUT = '10m'
 
-# Successful jobs are kept for this many seconds
-FASTANI_JOB_RESULT_TTL = 60 * 60 * 24 * 7  # 1 week
+# Successful jobs are kept for this long
+FASTANI_JOB_RESULT_TTL = '7d'
 
 # Failed jobs are kept for this many seconds
-FASTANI_JOB_FAIL_TTL = 60 * 60 * 24 * 7  # 1 week
+FASTANI_JOB_FAIL_TTL = '7d'
 
 # Retry strategy for FastANI jobs
 FASTANI_JOB_RETRY = Retry(max=3)
