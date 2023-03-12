@@ -48,6 +48,8 @@ SMTP_TIMEOUT = os.environ.get('SMTP_TIMEOUT', '')
 SMTP_USER = os.environ.get('SMTP_USER', '')
 SMTP_PASS = os.environ.get('SMTP_PASS', '')
 
+SMTP_DOMAIN_BLACKLIST = {'aneesho.com'}
+
 # ------------------------------------------------------------------------------
 # FastANI
 # ------------------------------------------------------------------------------

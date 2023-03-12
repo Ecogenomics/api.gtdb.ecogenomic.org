@@ -1,5 +1,4 @@
 import re
-import tarfile
 import zipfile
 from io import BytesIO
 from typing import Optional
@@ -10,7 +9,7 @@ import sqlalchemy as sa
 from fastapi import UploadFile
 from sqlalchemy.orm import Session
 
-from api.config import GTDB_CAPTCHA_SECRET_KEY, Env, ENV_NAME
+from api.config import GTDB_CAPTCHA_SECRET_KEY, Env, ENV_NAME, SMTP_DOMAIN_BLACKLIST
 from api.db.models import GtdbWebUbaAlias, Genome
 from api.exceptions import HttpBadRequest
 from api.model.util import UtilContactEmailRequest, NoUserAccEnum, PrevUserEnum, UserOnlyEnum
@@ -35,6 +34,8 @@ async def send_contact_us_email(request: UtilContactEmailRequest):
         raise HttpBadRequest('You must supply a message')
     if not request.clientResponse:
         raise HttpBadRequest('You must supply the reCAPTCHA token')
+    if request.fromEmail.split('@')[1] in SMTP_DOMAIN_BLACKLIST:
+        raise HttpBadRequest('E-mail domain has been blacklisted for spamming.')
 
     # Sanitise the input
     subject = request.subject[0:256]
@@ -63,10 +64,10 @@ async def send_contact_us_email(request: UtilContactEmailRequest):
 
         # Send confirmation e-mail to user.
         await send_smtp_email(to=[request.fromEmail],
-                        content=f'Your message has been sent.\n'
-                                f'Please do not reply to this message, this inbox is not monitored.\n\n'
-                                f'Message:\n{content}',
-                        subject='[GTDB Support] Message sent successfully')
+                              content=f'Your message has been sent.\n'
+                                      f'Please do not reply to this message, this inbox is not monitored.\n\n'
+                                      f'Message:\n{content}',
+                              subject='[GTDB Support] Message sent successfully')
         return 'Success!', 200
     else:
         raise HttpBadRequest('Invalid reCAPTCHA response.')
