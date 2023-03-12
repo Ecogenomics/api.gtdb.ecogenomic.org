@@ -1,3 +1,10 @@
+# [2.6.0](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.5.0...v2.6.0) (2023-03-12)
+
+
+### Features
+
+* **email:** Add blacklisted e-mails to contact us. ([bdc517a](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/bdc517ab8fbd642671d5ce3a0d630a720c77bc17))
+
 # [2.5.0](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.4.0...v2.5.0) (2023-02-15)
 
 
