@@ -4,10 +4,11 @@ from fastapi import APIRouter
 from fastapi import Depends
 from sqlalchemy.orm import Session
 
-from api.db import get_gtdb_db
+from api.db import get_gtdb_db, get_gtdb_web_db
 from api.util.collection import iter_batches
 from api.view.genomes import v_genomes_all
 from api.view.species import v_species_all
+from api.view.taxa import v_get_all_taxa
 
 router = APIRouter(prefix='/sitemap', tags=['sitemap'])
 
@@ -20,12 +21,13 @@ MAX_ITEMS = 4000
 
 
 @router.get('', summary='Generate the sitemap content for the GTDB website.')
-async def gtdb(db: Session = Depends(get_gtdb_db)):
+async def gtdb(db: Session = Depends(get_gtdb_db), db_web: Session = Depends(get_gtdb_web_db)):
     out = dict()
 
     # Load the genome pages for the sitemap
     all_species = v_species_all(db)
     all_genomes = await v_genomes_all(db)
+    all_taxa = v_get_all_taxa(db_web)
 
     # Generate the species pages
     species_i = 0
@@ -61,8 +63,24 @@ async def gtdb(db: Session = Depends(get_gtdb_db)):
             ])
         out[genome_key].append('</urlset>')
         out[genome_key] = '\n'.join(out[genome_key])
-
         genome_i += 1
+
+    taxa_i = 0
+    for taxa_batch in iter_batches(all_taxa.taxa, MAX_ITEMS):
+        taxa_key = f'sitemap-tree-{taxa_i}.xml'
+        out[taxa_key] = [
+            '<?xml version="1.0" encoding="UTF-8"?>',
+            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+        ]
+        for taxon in taxa_batch:
+            out[taxa_key].extend([
+                '   <url>',
+                f'      <loc>https://gtdb.ecogenomic.org/tree?r={quote(taxon)}</loc>',
+                '   </url>'
+            ])
+        out[taxa_key].append('</urlset>')
+        out[taxa_key] = '\n'.join(out[taxa_key])
+        taxa_i += 1
 
     # Generate the sitemap file (general)
     out['sitemap-general.xml'] = [
@@ -96,6 +114,12 @@ async def gtdb(db: Session = Depends(get_gtdb_db)):
         out['sitemap.xml'].extend([
             '   <sitemap>',
             f'      <loc>https://gtdb.ecogenomic.org/sitemap-genome-{i}.xml</loc>',
+            '   </sitemap>',
+        ])
+    for i in range(taxa_i):
+        out['sitemap.xml'].extend([
+            '   <sitemap>',
+            f'      <loc>https://gtdb.ecogenomic.org/sitemap-tree-{i}.xml</loc>',
             '   </sitemap>',
         ])
     out['sitemap.xml'].append('</sitemapindex>')
