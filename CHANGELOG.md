@@ -1,3 +1,10 @@
+# [2.8.0](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.7.0...v2.8.0) (2023-03-17)
+
+
+### Features
+
+* **advanced:** API to generate shell script for downloading NCBI genomes. ([a930790](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/a930790f85ef68f3b79be3911054b540fd991a02))
+
 # [2.7.0](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.6.0...v2.7.0) (2023-03-15)
 
 
