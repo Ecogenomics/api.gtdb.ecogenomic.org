@@ -50,3 +50,39 @@ async def get_by_id_download(fmt: Literal['csv', 'tsv'], request: Request, db: S
     response = StreamingResponse(iter([stream]), media_type="text/csv")
     response.headers["Content-Disposition"] = f"attachment; filename=gtdb-adv-search.{fmt}"
     return response
+
+
+@router.get('/search/download-genomes', response_class=StreamingResponse)
+async def v_download_genomes_from_adv(
+        method: Literal['datasets', 'curl'], request: Request, db: Session = Depends(get_gtdb_db),
+        gff: bool = False, rna: bool = False, cds: bool = False, protein: bool = False, genome: bool = True,
+        seqReport: bool = False
+):
+    adv_result = get_advanced_search(query=dict(request.query_params), db=db)
+    gids = {x['organism_name'] for x in adv_result.rows}
+
+    options = list()
+    if gff:
+        options.append('gff3' if method == 'datasets' else 'GENOME_GFF')
+    if rna:
+        options.append('rna' if method == 'datasets' else 'RNA_FASTA')
+    if cds:
+        options.append('cds' if method == 'datasets' else 'CDS_FASTA')
+    if protein:
+        options.append('protein' if method == 'datasets' else 'PROT_FASTA')
+    if genome:
+        options.append('genome' if method == 'datasets' else 'GENOME_FASTA')
+    if seqReport:
+        options.append('seq-report' if method == 'datasets' else 'SEQUENCE_REPORT')
+
+    lines = ['#!/bin/bash']
+    for gid in gids:
+        if method == 'datasets':
+            lines.append(f'datasets download genome accession {gid} --include {",".join(options)} --filename {gid}.zip')
+        else:
+            lines.append(f'curl -OJX GET "https://api.ncbi.nlm.nih.gov/datasets/v2alpha/genome/accession/{gid}/download?include_annotation_type={",".join(options)}&filename={gid}.zip" -H "Accept: application/zip"')
+
+    stream = '\n'.join(lines) + '\n'
+    response = StreamingResponse(iter([stream]), media_type="text/csv")
+    response.headers["Content-Disposition"] = f"attachment; filename=gtdb-adv-search-genomes.sh"
+    return response
