@@ -1,3 +1,10 @@
+# [2.7.0](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.6.0...v2.7.0) (2023-03-15)
+
+
+### Features
+
+* **sitemap:** Add tree to sitemap. ([b94a774](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/b94a774c883b14b7f0b41bf16eac83e3c3577deb))
+
 # [2.6.0](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.5.0...v2.6.0) (2023-03-12)
 
 
