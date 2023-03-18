@@ -4,11 +4,11 @@ from scipy.cluster.hierarchy import linkage, dendrogram
 def cluster_matrix(arr, method='average'):
     # do not use  ‘centroid’, ‘median’, and ‘ward’
     linkage_y = linkage(arr, method, optimal_ordering=True)
-    dendro_y = dendrogram(linkage_y)
+    dendro_y = dendrogram(linkage_y, no_plot=True)
 
     arr_t = arr.T
     linkage_x = linkage(arr_t, method, optimal_ordering=True)
-    dendro_x = dendrogram(linkage_x)
+    dendro_x = dendrogram(linkage_x, no_plot=True)
 
     arr = arr[dendro_y['leaves'], :]
     arr = arr[:, dendro_x['leaves']]
