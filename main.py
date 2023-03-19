@@ -14,7 +14,8 @@ from fastapi.responses import PlainTextResponse
 
 from api import __version__
 from api.config import Env, ENV_NAME
-from api.view import fastani, taxonomy, species, taxon, sankey, search, genome, advanced, util, genomes, status, meta, sitemap, taxa
+from api.view import fastani, taxonomy, species, taxon, sankey, search, genome, advanced, util, genomes, status, meta, \
+    sitemap, taxa
 
 # Documentation
 tags_metadata = [
@@ -152,9 +153,14 @@ async def send_request_to_plausible(request: Request):
     return
 
 
+# This will be executed on each API call
 @app.middleware("http")
 async def intercept_http_request(request: Request, call_next):
     response, _ = await asyncio.gather(call_next(request), send_request_to_plausible(request))
+
+    # For requests that provide a cacheKey, cache the response for 1 year
+    if Env is not Env.LOCAL and 'Cache-Control' not in response.headers and 'cacheKey' in request.query_params:
+        response.headers["Cache-Control"] = "max-age=31536000, must-revalidate, proxy-revalidate"
     return response
 
 
