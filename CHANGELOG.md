@@ -1,3 +1,11 @@
+# [2.9.0](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.8.0...v2.9.0) (2023-03-19)
+
+
+### Features
+
+* **cache:** Add permanent caching for requests that provide a cacheKey. ([0c97204](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/0c972045ca43f0f2d7428309452a5e7af9531fd9))
+* **fastani:** Ignore plot when clustering. ([67aca84](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/67aca8427423b57512bec4c05470ebb16a22eef5))
+
 # [2.8.0](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.7.0...v2.8.0) (2023-03-17)
 
 
