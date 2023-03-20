@@ -49,9 +49,9 @@ class FastAniJobResult(BaseModel):
                                description='collection of GenBank/RefSeq accession(s)')
     group_2: List[str] = Field(..., example=['GCF_123456789.1'],
                                description='collection of GenBank/RefSeq accession(s)')
-    parameters: FastAniParameters
-    results: List[FastAniResult]
-    positionInQueue: Optional[int] = Field(None)
+    parameters: FastAniParameters = Field(..., description='parameters used to run FastANI')
+    results: List[FastAniResult] = Field(..., description='list of results')
+    positionInQueue: Optional[int] = Field(None, description='Not currently implemented.')
 
 
 class FastAniJobRequest(BaseModel):

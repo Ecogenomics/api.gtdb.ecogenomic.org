@@ -1,13 +1,15 @@
 from typing import List, Optional
 
+import numpy as np
 import sqlalchemy as sa
 from sqlalchemy import sql
 from sqlalchemy.orm import Session
 
 from api.db.models import GtdbSpeciesClusterCount, DbGtdbTree, DbGtdbTreeChildren, GtdbWebTaxonHist, MetadataTaxonomy, \
-    Genome
+    Genome, MetadataNucleotide
 from api.exceptions import HttpBadRequest
-from api.model.taxon import TaxonDescendants, TaxonSearchResponse, TaxonPreviousReleases
+from api.model.graph import GraphHistogramBin
+from api.model.taxon import TaxonDescendants, TaxonSearchResponse, TaxonPreviousReleases, TaxonCard
 
 
 def get_taxon_descendants(taxon: str, db: Session) -> List[TaxonDescendants]:
@@ -239,3 +241,100 @@ def results_from_previous_releases(search: str, db: Session) -> List[TaxonPrevio
                                               firstSeen=sorted_taxa[0],
                                               lastSeen=sorted_taxa[-1]))
     return out_list
+
+
+def get_gc_content_histogram_bins(taxon: str, db: Session) -> List[GraphHistogramBin]:
+    # Select the target column to search
+    if taxon.startswith('d__'):
+        target_col = MetadataTaxonomy.gtdb_domain
+    elif taxon.startswith('p__'):
+        target_col = MetadataTaxonomy.gtdb_phylum
+    elif taxon.startswith('c__'):
+        target_col = MetadataTaxonomy.gtdb_class
+    elif taxon.startswith('o__'):
+        target_col = MetadataTaxonomy.gtdb_order
+    elif taxon.startswith('f__'):
+        target_col = MetadataTaxonomy.gtdb_family
+    elif taxon.startswith('g__'):
+        target_col = MetadataTaxonomy.gtdb_genus
+    elif taxon.startswith('s__'):
+        target_col = MetadataTaxonomy.gtdb_species
+    else:
+        raise HttpBadRequest(f'Invalid taxon {taxon}')
+
+    # Select the GC values
+    query = sa.select([MetadataNucleotide.gc_percentage]).select_from(
+        sa.join(Genome, MetadataTaxonomy).join(MetadataNucleotide)).where(target_col == taxon)
+    results = db.execute(query).fetchall()
+    if len(results) == 0:
+        raise HttpBadRequest(f'Taxon {taxon} not found')
+    results = [x[0] for x in results]
+
+    # Compute the histogram bins
+    counts, bin_edges = np.histogram(results, bins='auto')
+
+    out = list()
+    for i, count in enumerate(counts):
+        out.append(GraphHistogramBin(x0=bin_edges[i], x1=bin_edges[i + 1], height=count))
+    return out
+
+
+def get_taxon_card(taxon: str, db_gtdb: Session, db_web: Session) -> TaxonCard:
+    idx_to_tax_col = (
+        MetadataTaxonomy.gtdb_domain,
+        MetadataTaxonomy.gtdb_phylum,
+        MetadataTaxonomy.gtdb_class,
+        MetadataTaxonomy.gtdb_order,
+        MetadataTaxonomy.gtdb_family,
+        MetadataTaxonomy.gtdb_genus,
+        MetadataTaxonomy.gtdb_species,
+    )
+    idx_to_rank = ('Domain', 'Phylum', 'Class', 'Order', 'Family', 'Genus', 'Species')
+
+    # Select the target column to search
+    if taxon.startswith('d__'):
+        rank_idx = 0
+    elif taxon.startswith('p__'):
+        rank_idx = 1
+    elif taxon.startswith('c__'):
+        rank_idx = 2
+    elif taxon.startswith('o__'):
+        rank_idx = 3
+    elif taxon.startswith('f__'):
+        rank_idx = 4
+    elif taxon.startswith('g__'):
+        rank_idx = 5
+    elif taxon.startswith('s__'):
+        rank_idx = 6
+    else:
+        raise HttpBadRequest(f'Invalid taxon {taxon}')
+
+    target_col = idx_to_tax_col[rank_idx]
+    cur_rank = idx_to_rank[rank_idx]
+    higher_ranks = idx_to_tax_col[:rank_idx]
+
+    # Make sure this taxon exists
+    query_n_gids = sa.select([sa.func.count('*')]).select_from(MetadataTaxonomy).where(target_col == taxon)
+    results_n_gids = db_gtdb.execute(query_n_gids).fetchall()
+    if len(results_n_gids) == 0:
+        raise HttpBadRequest(f'Taxon {taxon} not found')
+    n_genomes = results_n_gids[0]['count']
+
+    # Find the higher ranks for this taxon
+    if len(higher_ranks) > 0:
+        query_higher_ranks = sa.select(higher_ranks).select_from(MetadataTaxonomy).where(target_col == taxon).distinct()
+        results_higher_ranks = db_gtdb.execute(query_higher_ranks).fetchall()
+        if len(results_higher_ranks) != 1:
+            raise HttpBadRequest(f'Taxon {taxon} not found')
+        higher_ranks_out = list(results_higher_ranks[0])
+    else:
+        higher_ranks_out = list()
+
+    # Find the releases this taxon is present in
+
+    return TaxonCard(
+        nGenomes=n_genomes,
+        rank=cur_rank,
+        inReleases=[],
+        higherRanks=higher_ranks_out
+    )

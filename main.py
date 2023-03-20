@@ -70,6 +70,10 @@ tags_metadata = [
     {
         "name": "taxa",
         "description": "Returns information about taxa."
+    },
+    {
+        "name": "status",
+        "description": "Returns information about the state of the web services."
     }
 ]
 
@@ -77,10 +81,10 @@ tags_metadata = [
 app = FastAPI(title='GTDB API',
               version=__version__,
               docs_url='/',
-              description=f'This API was designed for use by the GTDB website, however, you are free to use it for '
-                          f'your own purposes. We will add more documentation in the future.<br><br>'
-                          f'Most of the data available here can be downloaded as a flat file from the downloads page, '
-                          f'please consider that before scraping.'
+              description=f'<p>Although this API was initially created for use exclusively by the GTDB website, we welcome '
+                          f'and encourage you to utilize it for your own purposes.</p>'
+                          f'<p>We plan to expand our documentation in the near future to provide you with even more helpful information.</p>'
+                          f'<p>It is important to note that a significant portion of the available data can be downloaded as a flat file from our downloads page, so we kindly ask that you consider this before resorting to scraping.</p>'
                           f'<ul>'
                           f'<li><a href="https://github.com/Ecogenomics/api.gtdb.ecogenomic.org" target="_blank">GitHub repository</a><br></li>'
                           f'<li><a href="https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/blob/main/CHANGELOG.md" target="_blank">CHANGELOG</a></li>'
@@ -159,7 +163,7 @@ async def intercept_http_request(request: Request, call_next):
     response, _ = await asyncio.gather(call_next(request), send_request_to_plausible(request))
 
     # For requests that provide a cacheKey, cache the response for 1 year
-    if Env is not Env.LOCAL and 'Cache-Control' not in response.headers and 'cacheKey' in request.query_params:
+    if ENV_NAME is Env.PROD and 'Cache-Control' not in response.headers and 'cacheKey' in request.query_params:
         response.headers["Cache-Control"] = "max-age=31536000, must-revalidate, proxy-revalidate"
     return response
 

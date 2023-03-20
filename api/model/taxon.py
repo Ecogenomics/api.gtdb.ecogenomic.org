@@ -24,3 +24,10 @@ class TaxonPreviousReleases(BaseModel):
     taxon: str = Field(..., description='the name of this taxon', example='d__Archaea')
     firstSeen: str = Field(..., description='the first release this taxon was seen in', example='R80')
     lastSeen: str = Field(..., description='the last release this taxon was seen in', example='R95')
+
+
+class TaxonCard(BaseModel):
+    nGenomes: int = Field(..., description='the number of genomes in this taxon', example=1234)
+    rank: str = Field(..., description='the rank of this taxon', example='domain')
+    inReleases: List[str] = Field(..., description='a list of releases this taxon has appeared in (sorted)', example='[R80, R95]')
+    higherRanks: List[str] = Field(..., description='a list of higher ranks for this taxon')

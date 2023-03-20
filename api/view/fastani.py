@@ -15,8 +15,7 @@ from api.util.io import rows_to_delim
 router = APIRouter(prefix='/fastani', tags=['fastani'])
 
 
-@router.post("", response_model=FastAniJobResult,
-             summary='Create a new FastANI job.')
+@router.post("", response_model=FastAniJobResult, summary='Create a new FastANI job.')
 async def fastani_view(job_request: FastAniJobRequest):
     return enqueue_fastani(job_request)
 

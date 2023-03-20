@@ -52,7 +52,7 @@ async def get_by_id_download(fmt: Literal['csv', 'tsv'], request: Request, db: S
     return response
 
 
-@router.get('/search/download-genomes', response_class=StreamingResponse)
+@router.get('/search/download-genomes', response_class=StreamingResponse, summary='Download a shell script to download genomes from Advanced Search results.')
 async def v_download_genomes_from_adv(
         method: Literal['datasets', 'curl'], request: Request, db: Session = Depends(get_gtdb_db),
         gff: bool = False, rna: bool = False, cds: bool = False, protein: bool = False, genome: bool = True,

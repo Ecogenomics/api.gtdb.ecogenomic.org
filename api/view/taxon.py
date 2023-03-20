@@ -5,9 +5,10 @@ from fastapi import Depends
 from sqlalchemy.orm import Session
 
 from api.controller.taxon import get_taxon_descendants, search_for_taxon, results_from_previous_releases, \
-    search_for_taxon_all_releases, get_taxon_genomes_in_taxon
+    search_for_taxon_all_releases, get_taxon_genomes_in_taxon, get_gc_content_histogram_bins, get_taxon_card
 from api.db import get_gtdb_db, get_gtdb_web_db
-from api.model.taxon import TaxonDescendants, TaxonSearchResponse, TaxonPreviousReleases
+from api.model.graph import GraphHistogramBin
+from api.model.taxon import TaxonDescendants, TaxonSearchResponse, TaxonPreviousReleases, TaxonCard
 
 router = APIRouter(prefix='/taxon', tags=['taxon'])
 
@@ -39,3 +40,13 @@ def v_taxon_genomes(taxon: str, sp_reps_only: Optional[bool] = False, db: Sessio
             summary='Search for a taxon by name.')
 def get_taxon_previous_releases(taxon: str, db: Session = Depends(get_gtdb_web_db)):
     return results_from_previous_releases(taxon, db)
+
+@router.get('/{taxon}/gc-histogram-bins', response_model=List[GraphHistogramBin],
+            summary='Return the bins for plotting GC% content in a histogram.')
+def v_get_taxon_gc_histogram_bins(taxon: str, db: Session = Depends(get_gtdb_db)):
+    return get_gc_content_histogram_bins(taxon, db)
+
+@router.get('/{taxon}/card', response_model=TaxonCard, summary='Return information about a taxon for the card page.')
+def v_get_taxon_card(taxon: str, db_gtdb: Session = Depends(get_gtdb_db), db_web: Session = Depends(get_gtdb_web_db)):
+    return get_taxon_card(taxon, db_gtdb, db_web)
+
