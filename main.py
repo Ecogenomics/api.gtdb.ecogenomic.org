@@ -163,6 +163,9 @@ async def intercept_http_request(request: Request, call_next):
     response, _ = await asyncio.gather(call_next(request), send_request_to_plausible(request))
 
     # For requests that provide a cacheKey, cache the response for 1 year
+    print(ENV_NAME)
+    print('Cache-Control' in response.headers)
+    print('cacheKey' in request.query_params)
     if ENV_NAME is Env.PROD and 'Cache-Control' not in response.headers and 'cacheKey' in request.query_params:
         response.headers["Cache-Control"] = "max-age=31536000, must-revalidate, proxy-revalidate"
     return response
