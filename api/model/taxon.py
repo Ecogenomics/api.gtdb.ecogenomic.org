@@ -25,6 +25,11 @@ class TaxonPreviousReleases(BaseModel):
     firstSeen: str = Field(..., description='the first release this taxon was seen in', example='R80')
     lastSeen: str = Field(..., description='the last release this taxon was seen in', example='R95')
 
+class TaxonPreviousReleasesPaginated(BaseModel):
+    totalRows: int = Field(..., description='the total number of previous releases for this taxon', example=1234)
+    rows: List[TaxonPreviousReleases] = Field(..., description='a collection of previous releases for this taxon')
+
+
 
 class TaxonCard(BaseModel):
     nGenomes: int = Field(..., description='the number of genomes in this taxon', example=1234)

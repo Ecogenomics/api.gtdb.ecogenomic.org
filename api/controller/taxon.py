@@ -9,7 +9,8 @@ from api.db.models import GtdbSpeciesClusterCount, DbGtdbTree, DbGtdbTreeChildre
     Genome, MetadataNucleotide
 from api.exceptions import HttpBadRequest
 from api.model.graph import GraphHistogramBin
-from api.model.taxon import TaxonDescendants, TaxonSearchResponse, TaxonPreviousReleases, TaxonCard
+from api.model.taxon import TaxonDescendants, TaxonSearchResponse, TaxonPreviousReleases, TaxonCard, \
+    TaxonPreviousReleasesPaginated
 
 
 def get_taxon_descendants(taxon: str, db: Session) -> List[TaxonDescendants]:
@@ -166,7 +167,8 @@ def search_for_taxon_all_releases(taxon: str, limit: Optional[int], db: Session)
         return TaxonSearchResponse(matches=all_results)
 
 
-def results_from_previous_releases(search: str, db: Session) -> List[TaxonPreviousReleases]:
+def results_from_previous_releases(search: str, db: Session, page: Optional[int] = None,
+                                   items_per_page: Optional[int] = None) -> TaxonPreviousReleasesPaginated:
     # Validate the input.
     search = search.strip()
     if len(search) <= 0:
@@ -188,13 +190,13 @@ def results_from_previous_releases(search: str, db: Session) -> List[TaxonPrevio
                             UNION ALL
                         SELECT DISTINCT rank_species, release_ver FROM taxon_hist WHERE rank_species ILIKE :arg;""")
     results = db.execute(query, {'arg': search})
-
     rank_order_dict = {'R80': 0, 'R83': 1, 'R86.2': 2, 'R89': 3, 'R95': 4, 'R202': 5, 'R207': 6, 'NCBI': 7}
 
     # There's a case that exists where the case is slightly different for previous releases.
     # Therefore, if all the keys are the same (ignoring case), and the current release is present
     # then use the most recent releases capitalisation
     results = [(x.rank_name.strip(), x.release_ver.strip()) for x in results]
+
     d_oldest_taxon_name = dict()
     for cur_taxon, release_ver in results:
         cur_release = rank_order_dict[release_ver]
@@ -240,7 +242,16 @@ def results_from_previous_releases(search: str, db: Session) -> List[TaxonPrevio
         out_list.append(TaxonPreviousReleases(taxon=rank_name,
                                               firstSeen=sorted_taxa[0],
                                               lastSeen=sorted_taxa[-1]))
-    return out_list
+
+    # Do pagination
+    total_rows = len(out_list)
+    if page and items_per_page:
+        out_list = out_list[items_per_page * (page - 1): items_per_page * page]
+
+    return TaxonPreviousReleasesPaginated(
+        totalRows=total_rows,
+        rows=out_list
+    )
 
 
 def get_gc_content_histogram_bins(taxon: str, db: Session) -> List[GraphHistogramBin]:
