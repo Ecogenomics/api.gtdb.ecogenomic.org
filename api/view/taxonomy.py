@@ -89,13 +89,11 @@ def get_taxon_not_in_literature(db: Session = Depends(get_gtdb_web_db)):
 
 @router.get('/partial/{taxon}', response_model=TaxonomyOptional,
             summary='Find the partial taxonomy given a taxon.')
-def partial_taxon_search(taxon: str = Query(..., description='The taxon to search for (including prefix).'),
-                         db: Session = Depends(get_gtdb_db)):
+def partial_taxon_search(taxon: str, db: Session = Depends(get_gtdb_db)):
     return taxonomy_partial_search(taxon, db)
 
 
 @router.get('/partial/{taxon}/all-releases', response_model=List[TaxonomyOptionalRelease],
             summary='Find the partial taxonomy given a taxon across all releases (including NCBI).')
-def v_partial_taxon_all_releases(taxon: str = Query(..., description='The taxon to search for (including prefix).'),
-                                 db: Session = Depends(get_gtdb_web_db)):
+def v_partial_taxon_all_releases(taxon: str, db: Session = Depends(get_gtdb_web_db)):
     return taxonomy_partial_search_all_releases(taxon, db)
