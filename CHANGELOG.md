@@ -1,3 +1,11 @@
+# [2.10.0](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.9.0...v2.10.0) (2023-03-26)
+
+
+### Features
+
+* **previous-releases:** Add pagination to previous releases modal. ([95d9bbd](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/95d9bbdc5c275d08a283c985da7ecdf395ab13b0))
+* **taxon:** Add API to obtain GC count histogram bins for a specific taxon. ([3cd0d30](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/3cd0d30fd1c9a2062b062fad7b9ac75a3c5cc7b6))
+
 # [2.9.0](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.8.0...v2.9.0) (2023-03-19)
 
 
