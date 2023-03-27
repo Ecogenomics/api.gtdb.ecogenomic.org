@@ -57,8 +57,7 @@ class FastAniJobResult(BaseModel):
 class FastAniJobRequest(BaseModel):
     """The request sent by a user to run FastANI on the below parameters."""
     query: List[str] = Field(..., example=['GCA_123456789.1'], description='collection of GenBank/RefSeq accession(s)')
-    reference: List[str] = Field(..., example=['GCF_123456789.1'],
-                                 description='collection of GenBank/RefSeq accession(s)')
+    reference: List[str] = Field(..., example=['GCF_123456789.1'], description='collection of GenBank/RefSeq accession(s)')
     parameters: FastAniParameters
     priority: str = Field(..., example='secret', title="secret key to use priority queue")
 
