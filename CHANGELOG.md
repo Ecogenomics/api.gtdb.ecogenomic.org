@@ -1,3 +1,10 @@
+# [2.11.0](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.10.0...v2.11.0) (2023-03-28)
+
+
+### Features
+
+* **fastani:** Add low priority queue. ([1f2acc1](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/1f2acc1e081e841fdeefe7797a8a084a3c8173b0))
+
 # [2.10.0](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.9.0...v2.10.0) (2023-03-26)
 
 
