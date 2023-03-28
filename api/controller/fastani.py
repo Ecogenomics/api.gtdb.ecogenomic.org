@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 
 from api.config import REDIS_HOST, REDIS_PASS, FASTANI_MAX_PAIRWISE, \
     FASTANI_Q_NORMAL, FASTANI_Q_PRIORITY, FASTANI_PRIORITY_SECRET, FASTANI_BIN, FASTANI_JOB_TIMEOUT, \
-    FASTANI_JOB_RESULT_TTL, FASTANI_JOB_FAIL_TTL, FASTANI_JOB_RETRY, FASTANI_GENOME_DIR
+    FASTANI_JOB_RESULT_TTL, FASTANI_JOB_FAIL_TTL, FASTANI_JOB_RETRY, FASTANI_GENOME_DIR, FASTANI_Q_LOW
 from api.db.models import MetadataTaxonomy, Genome
 from api.exceptions import HttpBadRequest, HttpNotFound, HttpInternalServerError
 from api.model.fastani import FastAniJobResult, FastAniParameters, FastAniResult, FastAniJobRequest, FastAniConfig, \
@@ -114,9 +114,9 @@ def fastani_job_to_rows(job_id: str):
 def validate_genomes(group_a: List[str], group_b: List[str]):
     """Runs two collections of genomes to ensure they're valid."""
     n_pairwise = len(group_a) * len(group_b)
-    if n_pairwise > FASTANI_MAX_PAIRWISE:
-        raise HttpBadRequest(f'Too many pairwise comparisons: {n_pairwise:,} > '
-                             f'{FASTANI_MAX_PAIRWISE:,}')
+    # if n_pairwise > FASTANI_MAX_PAIRWISE:
+    #     raise HttpBadRequest(f'Too many pairwise comparisons: {n_pairwise:,} > '
+    #                          f'{FASTANI_MAX_PAIRWISE:,}')
     if n_pairwise == 0:
         raise HttpBadRequest('No pairwise comparisons requested')
 
@@ -169,9 +169,16 @@ def enqueue_fastani(request: FastAniJobRequest) -> FastAniJobResult:
     # Generate all unique FastANI job ids
     unique_ids = get_unique_job_ids(q_genomes, r_genomes, request.parameters)
 
+    # Set the target queue
+    n_pairwise = len(q_genomes) * len(r_genomes)
+    if n_pairwise > FASTANI_MAX_PAIRWISE:
+        target_queue = FASTANI_Q_LOW
+    else:
+        target_queue = FASTANI_Q_PRIORITY if is_priority else FASTANI_Q_NORMAL
+
     # Create the job
     with Redis(host=REDIS_HOST, password=REDIS_PASS) as conn:
-        q = Queue(FASTANI_Q_PRIORITY if is_priority else FASTANI_Q_NORMAL, connection=conn)
+        q = Queue(target_queue, connection=conn)
 
         # Check if any Jobs already exist
         existing_jobs = get_existing_jobs(unique_ids.keys(), conn)
@@ -229,8 +236,9 @@ def get_fastani_results_from_job(job: Job, n_rows: Optional[int] = None, page: O
         stderr = dependency.meta.get('stderr')
         cmd = dependency.meta.get('cmd')
         ani, mapped, total = None, None, None
-        if dependency.result is not None:
-            ani, mapped, total = dependency.result
+        dependency_result = dependency.return_value(refresh=False)
+        if dependency_result is not None:
+            ani, mapped, total = dependency_result
         if ani is not None and mapped is not None and total is not None:
             af = round(mapped / total, 4)
         else:

@@ -69,8 +69,9 @@ FASTANI_BIN = {
 FASTANI_PRIORITY_SECRET = os.environ.get('FASTANI_PRIORITY_SECRET')
 
 # These queues contain individual FastANI jobs
-FASTANI_Q_PRIORITY = os.environ.get('FASTANI_Q_PRIORITY', 'high')
-FASTANI_Q_NORMAL = os.environ.get('FASTANI_Q_NORMAL', 'low')
+FASTANI_Q_PRIORITY = os.environ.get('FASTANI_Q_PRIORITY', 'website-fastani-priority')
+FASTANI_Q_NORMAL = os.environ.get('FASTANI_Q_NORMAL', 'website-fastani-normal')
+FASTANI_Q_LOW = os.environ.get('FASTANI_Q_LOW', 'website-fastani-low')
 
 # Maximum number of pairwise comparisons in a single job
 FASTANI_MAX_PAIRWISE = 1000
