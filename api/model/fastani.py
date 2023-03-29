@@ -65,7 +65,7 @@ class FastAniJobRequest(BaseModel):
 class FastAniConfig(BaseModel):
     """Returns the server-configured FastANI parameters."""
     maxPairwise: int = Field(..., example=1000, title="maximum number of pairwise comparisons to use normal priority queue")
-
+    maxPairwiseLow: int = Field(..., example=100_000, title="maximum number of pairwise comparisons to use low priority queue")
 
 class FastAniJobHeatmapData(BaseModel):
     x: int = Field(...)

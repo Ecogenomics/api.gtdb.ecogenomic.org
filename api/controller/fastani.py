@@ -17,7 +17,8 @@ from sqlalchemy.orm import Session
 
 from api.config import REDIS_HOST, REDIS_PASS, FASTANI_MAX_PAIRWISE, \
     FASTANI_Q_NORMAL, FASTANI_Q_PRIORITY, FASTANI_PRIORITY_SECRET, FASTANI_BIN, FASTANI_JOB_TIMEOUT, \
-    FASTANI_JOB_RESULT_TTL, FASTANI_JOB_FAIL_TTL, FASTANI_JOB_RETRY, FASTANI_GENOME_DIR, FASTANI_Q_LOW
+    FASTANI_JOB_RESULT_TTL, FASTANI_JOB_FAIL_TTL, FASTANI_JOB_RETRY, FASTANI_GENOME_DIR, FASTANI_Q_LOW, \
+    FASTANI_MAX_PAIRWISE_LOW
 from api.db.models import MetadataTaxonomy, Genome
 from api.exceptions import HttpBadRequest, HttpNotFound, HttpInternalServerError
 from api.model.fastani import FastAniJobResult, FastAniParameters, FastAniResult, FastAniJobRequest, FastAniConfig, \
@@ -28,7 +29,7 @@ from api.util.ncbi import is_ncbi_accession
 
 
 def get_fastani_config() -> FastAniConfig:
-    return FastAniConfig(maxPairwise=FASTANI_MAX_PAIRWISE)
+    return FastAniConfig(maxPairwise=FASTANI_MAX_PAIRWISE, maxPairwiseLow=FASTANI_MAX_PAIRWISE_LOW)
 
 
 def get_fastani_job_progress(job_id: str, n_rows: Optional[int] = None, page: Optional[int] = None,
@@ -171,7 +172,9 @@ def enqueue_fastani(request: FastAniJobRequest) -> FastAniJobResult:
 
     # Set the target queue
     n_pairwise = len(q_genomes) * len(r_genomes)
-    if n_pairwise > FASTANI_MAX_PAIRWISE:
+    if n_pairwise > FASTANI_MAX_PAIRWISE_LOW:
+        raise HttpBadRequest(f'Too many pairwise comparisons: {n_pairwise:,} > {FASTANI_MAX_PAIRWISE_LOW:,}')
+    elif n_pairwise > FASTANI_MAX_PAIRWISE:
         target_queue = FASTANI_Q_LOW
     else:
         target_queue = FASTANI_Q_PRIORITY if is_priority else FASTANI_Q_NORMAL
@@ -321,7 +324,7 @@ def ncbi_accession_to_path(accession: str, root_dir: str = FASTANI_GENOME_DIR) -
 
 def run_fastani(q_path: str, r_path: str, kmer: int, frag_len: int, min_frag: int,
                 min_frac: float, version: str) -> Union[Tuple[Optional[float], int, int],
-                                                        Tuple[None, None, None]]:
+Tuple[None, None, None]]:
     """Runs an individual instance of FastANI."""
 
     # Load the current rq job context to save the metadata to
