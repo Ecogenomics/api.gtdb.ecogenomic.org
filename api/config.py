@@ -75,7 +75,7 @@ FASTANI_Q_LOW = os.environ.get('FASTANI_Q_LOW', 'website-fastani-low')
 
 # Maximum number of pairwise comparisons in a single job
 FASTANI_MAX_PAIRWISE = 1000
-FASTANI_MAX_PAIRWISE_LOW = 100_000
+FASTANI_MAX_PAIRWISE_LOW = 10_000
 
 # Maximum runtime before job is marked as failed (seconds)
 FASTANI_JOB_TIMEOUT = '10m'

@@ -14,6 +14,7 @@ from api.db.models import GtdbWebUbaAlias, Genome
 from api.exceptions import HttpBadRequest
 from api.model.util import UtilContactEmailRequest, NoUserAccEnum, PrevUserEnum, UserOnlyEnum
 from api.util.accession import canonical_gid
+from api.util.common import is_valid_email
 from api.util.email import send_smtp_email
 
 RE_CANONICAL = re.compile(r'G\d{9}')
@@ -23,8 +24,7 @@ RE_UBA = re.compile(r'UBA\d+')
 
 async def send_contact_us_email(request: UtilContactEmailRequest):
     # Validation
-    if request.fromEmail is None or not re.match(r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)",
-                                                 request.fromEmail):
+    if not is_valid_email(request.fromEmail):
         raise HttpBadRequest('Invalid e-mail address')
     if len(request.fromEmail) > 320:
         raise HttpBadRequest('E-mail address is longer than 320 characters.')

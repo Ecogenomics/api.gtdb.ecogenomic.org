@@ -24,6 +24,8 @@ from api.exceptions import HttpBadRequest, HttpNotFound, HttpInternalServerError
 from api.model.fastani import FastAniJobResult, FastAniParameters, FastAniResult, FastAniJobRequest, FastAniConfig, \
     FastAniResultData, FastAniJobHeatmap, FastAniJobHeatmapData, FastAniHeatmapDataStatus
 from api.util.collection import x_prod, deduplicate
+from api.util.common import is_valid_email
+from api.util.email import send_smtp_email
 from api.util.matrix import cluster_matrix
 from api.util.ncbi import is_ncbi_accession
 
@@ -40,10 +42,7 @@ def get_fastani_job_progress(job_id: str, n_rows: Optional[int] = None, page: Op
         try:
             job = Job.fetch(job_id, connection=conn)
             group_1, group_2 = job.meta.get('group_1'), job.meta.get('group_2')
-            job_pos = job.get_position()
-            job_position = None
-            if job_pos:
-                job_position = max(0, job_pos - len(group_1) * len(group_2) * 2)
+            job_position = get_current_job_queue_position(job, conn)
             return FastAniJobResult(job_id=job_id,
                                     group_1=group_1,
                                     group_2=group_2,
@@ -160,6 +159,11 @@ def prepare_fastani_single_job(gid_a: str, gid_b: str, job_id: str, params: Fast
 def enqueue_fastani(request: FastAniJobRequest) -> FastAniJobResult:
     """Enqueue FastANI jobs and return a unique ID to the user."""
 
+    # Validate e-mail address is valid if provided
+    if request.email:
+        if not is_valid_email(request.email):
+            raise HttpBadRequest('Invalid e-mail address')
+
     # Extract variables
     is_priority = request.priority == FASTANI_PRIORITY_SECRET
     q_genomes, r_genomes = deduplicate(request.query), deduplicate(request.reference)
@@ -210,13 +214,23 @@ def enqueue_fastani(request: FastAniJobRequest) -> FastAniJobResult:
         prev_jobs.extend(q.enqueue_many(to_enqueue))
 
         # Create the main job that will wait for all the individual jobs
-        job = q.enqueue(print, args=(), depends_on=prev_jobs,
-                        meta={'parameters': request.parameters.json(),
-                              'group_1': q_genomes, 'group_2': r_genomes},
-                        timeout=FASTANI_JOB_TIMEOUT,
-                        result_ttl=FASTANI_JOB_RESULT_TTL,
-                        failure_ttl=FASTANI_JOB_FAIL_TTL,
-                        retry=FASTANI_JOB_RETRY)
+        job = q.enqueue(
+            print,
+            args=(),
+            depends_on=prev_jobs,
+            meta={
+                'parameters': request.parameters.json(),
+                'group_1': q_genomes,
+                'group_2': r_genomes,
+                'email': request.email,
+            },
+            timeout=FASTANI_JOB_TIMEOUT,
+            result_ttl=FASTANI_JOB_RESULT_TTL,
+            failure_ttl=FASTANI_JOB_FAIL_TTL,
+            retry=FASTANI_JOB_RETRY,
+            on_success=report_fastani_job_success,
+            on_failure=report_fastani_job_failure,
+        )
 
         return FastAniJobResult(job_id=job.get_id(),
                                 group_1=q_genomes,
@@ -503,3 +517,73 @@ def fastani_heatmap(job_id: str, method: Literal['ani', 'af'], db: Session):
         spReps=sorted(gid_is_sp_rep),
         pctDone=pct_done,
     )
+
+
+def report_fastani_job_success(job, connection, result, *args, **kwargs):
+    email = job.meta.get('email')
+    if email is None:
+        return
+    email = email.strip()
+
+    try:
+        send_smtp_email(
+            to=[email],
+            content=f'The FastANI job has completed, view the results here:\n\nhttps://gtdb.ecogenomic.org/tools/fastani?job-id={job.get_id()}',
+            subject='[GTDB] FastANI job completed'
+        )
+    except Exception as e:
+        print(f'Unable to send e-mail: {e}')
+
+
+def report_fastani_job_failure(job, connection, type, value, traceback):
+    email = job.meta.get('email')
+    if email is None:
+        return
+    email = email.strip()
+
+    try:
+        send_smtp_email(
+            to=[email],
+            content=f'The FastANI job has completed, view the results here:\n\n'
+                    f'https://gtdb.ecogenomic.org/tools/fastani?job-id={job.get_id()}\n\n'
+                    f'Note that one or more of the jobs failed, likely a specific accession does not exist.',
+            subject='[GTDB] FastANI job completed'
+        )
+    except Exception as e:
+        print(f'Unable to send e-mail: {e}')
+
+
+def get_current_job_queue_position(job: Job, conn) -> Optional[int]:
+    return None # TODO
+
+    # Jobs that are currently waiting on depdenencies will be in the deferred queue
+    if not job.is_deferred:
+        return None
+
+    # Get the current position of this job in the origin deferred queue
+    cur_pos = conn.zrank(f'rq:deferred:{job.origin}', job.id)
+    if cur_pos is None:
+        return None
+
+    previous_job_ids = set()
+
+    # If this is not the first item in the current queue, then take all jobs before this job
+    if cur_pos > 0:
+        previous_job_ids.update(conn.zrange(f'rq:deferred:{job.origin}', 0, cur_pos - 1))
+
+    # Additionally, take all jobs from the higher priority queues
+    if job.origin == FASTANI_Q_LOW:
+        previous_job_ids.update(conn.zrange(f'rq:deferred:{FASTANI_Q_NORMAL}', 0, -1))
+
+
+    if job.origin == FASTANI_Q_LOW:
+        prev_low_jobs = conn.zrange(f'rq:deferred:{job.origin}', 0, cur_pos - 1)
+    elif job.origin == FASTANI_Q_NORMAL:
+        prev_norm_jobs = conn.zrange(f'rq:deferred:{FASTANI_Q_LOW}', 0, -1)
+
+    # Get all jobs before this job in the queue, additionally make sure they're valid
+
+
+
+    return
+

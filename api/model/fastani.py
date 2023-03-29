@@ -60,6 +60,7 @@ class FastAniJobRequest(BaseModel):
     reference: List[str] = Field(..., example=['GCF_123456789.1'], description='collection of GenBank/RefSeq accession(s)')
     parameters: FastAniParameters
     priority: str = Field(..., example='secret', title="secret key to use priority queue")
+    email: Optional[str] = Field(None, example='foo@bar.com', title="e-mail address to be notified on completion")
 
 
 class FastAniConfig(BaseModel):

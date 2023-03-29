@@ -4,7 +4,7 @@ from sqlalchemy.dialects.postgresql import DOUBLE_PRECISION, BIGINT
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import relationship
 
-from api.db import GtdbBase, GtdbWebBase
+from api.db import GtdbBase, GtdbWebBase, GtdbCommonBase
 
 
 class GenomeSource(GtdbBase):  # OK
@@ -554,6 +554,7 @@ class GtdbWebUbaAlias(GtdbWebBase):
     uba_accession = Column(Text, nullable=False)
     ncbi_accession = Column(Text)
 
+
 # class GtdbWebSpeciesHeatmap(GtdbWebBase):
 #     __tablename__ = 'species_heatmap'
 #     species = Column(Text, primary_key=True)
@@ -569,3 +570,11 @@ class GtdbWebUbaAlias(GtdbWebBase):
 #     ani = Column(Float)
 #     n_frag = Column(Integer)
 #     n_total_frag = Column(Integer)
+
+
+class GtdbCommonGenomes(GtdbCommonBase):
+    __tablename__ = 'genomes'
+    id = Column(Integer, primary_key=True)
+    name = Column(Text)
+    fna_gz_md5 = Column(Text)
+    assembly_url = Column(Text)
