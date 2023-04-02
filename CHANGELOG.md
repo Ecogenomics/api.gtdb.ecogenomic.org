@@ -1,3 +1,15 @@
+# [2.12.0](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.11.0...v2.12.0) (2023-04-02)
+
+
+### Bug Fixes
+
+* **fastani:** Set maximum amount of jobs for low priority queue. ([ae64f1b](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/ae64f1b19e34b62e46cc97c34b0ab603b8fa4c05))
+
+
+### Features
+
+* **fastani:** Add option to have results e-mailed to the user. ([379a6b7](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/379a6b7d1a80a8787e8aa32a933318e30dd9101f))
+
 # [2.11.0](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.10.0...v2.11.0) (2023-03-28)
 
 
