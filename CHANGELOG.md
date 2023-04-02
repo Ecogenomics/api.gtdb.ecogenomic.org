@@ -1,3 +1,10 @@
+## [2.12.1](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.12.0...v2.12.1) (2023-04-02)
+
+
+### Bug Fixes
+
+* **fastani:** Await e-mail function. ([f33f3bc](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/f33f3bca223d61da037b32c769d40709e5aa3711))
+
 # [2.12.0](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.11.0...v2.12.0) (2023-04-02)
 
 
