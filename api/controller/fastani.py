@@ -5,7 +5,7 @@ from collections import defaultdict
 from functools import cmp_to_key
 from typing import List
 from typing import Tuple, Optional, Union, Dict, Collection, Literal
-
+import asyncio
 import numpy as np
 import sqlalchemy as sa
 from redis import Redis
@@ -526,11 +526,11 @@ def report_fastani_job_success(job, connection, result, *args, **kwargs):
     email = email.strip()
 
     try:
-        await send_smtp_email(
+        asyncio.run(send_smtp_email(
             to=[email],
             content=f'The FastANI job has completed, view the results here:\n\nhttps://gtdb.ecogenomic.org/tools/fastani?job-id={job.get_id()}',
             subject='[GTDB] FastANI job completed'
-        )
+        ))
     except Exception as e:
         print(f'Unable to send e-mail: {e}')
 
@@ -542,13 +542,13 @@ def report_fastani_job_failure(job, connection, type, value, traceback):
     email = email.strip()
 
     try:
-        await send_smtp_email(
+        asyncio.run(send_smtp_email(
             to=[email],
             content=f'The FastANI job has completed, view the results here:\n\n'
                     f'https://gtdb.ecogenomic.org/tools/fastani?job-id={job.get_id()}\n\n'
                     f'Note that one or more of the jobs failed, likely a specific accession does not exist.',
             subject='[GTDB] FastANI job completed'
-        )
+        ))
     except Exception as e:
         print(f'Unable to send e-mail: {e}')
 
