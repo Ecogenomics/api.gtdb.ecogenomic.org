@@ -526,7 +526,7 @@ def report_fastani_job_success(job, connection, result, *args, **kwargs):
     email = email.strip()
 
     try:
-        send_smtp_email(
+        await send_smtp_email(
             to=[email],
             content=f'The FastANI job has completed, view the results here:\n\nhttps://gtdb.ecogenomic.org/tools/fastani?job-id={job.get_id()}',
             subject='[GTDB] FastANI job completed'
@@ -542,7 +542,7 @@ def report_fastani_job_failure(job, connection, type, value, traceback):
     email = email.strip()
 
     try:
-        send_smtp_email(
+        await send_smtp_email(
             to=[email],
             content=f'The FastANI job has completed, view the results here:\n\n'
                     f'https://gtdb.ecogenomic.org/tools/fastani?job-id={job.get_id()}\n\n'
