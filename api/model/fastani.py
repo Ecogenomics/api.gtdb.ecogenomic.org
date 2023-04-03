@@ -7,6 +7,12 @@ from rq.job import JobStatus
 VERSIONS = Literal['1.0', '1.1', '1.2', '1.3', '1.31', '1.32', '1.33']
 
 
+class FastAniJobStatus(Enum):
+    QUEUED = 'queued'  # Job is queued / running.
+    RUNNING = 'running' # job is running
+    FINISHED = 'finished'  # Finished.
+    ERROR = 'error'  # Errored.
+
 class FastAniHeatmapDataStatus(Enum):
     QUEUED = 'queued'  # Job is queued / running.
     FINISHED = 'finished'  # Finished.
@@ -52,6 +58,12 @@ class FastAniJobResult(BaseModel):
     parameters: FastAniParameters = Field(..., description='parameters used to run FastANI')
     results: List[FastAniResult] = Field(..., description='list of results')
     positionInQueue: Optional[int] = Field(None, description='Not currently implemented.')
+
+class FastAniJobInfo(BaseModel):
+    """Return information about a specific FastANI job (i.e. the time it was created, and the status of the job)."""
+    jobId: str = Field(..., example='c3710c6f-03ee-42f1-a01e-4c594619d605', title="unique ID associated with this job")
+    createdOn: float = Field(..., example='1234567890', title="unix epoch timestamp of when the job was created")
+    status: FastAniJobStatus = Field(..., example='finished', title="the status of the job")
 
 
 class FastAniJobRequest(BaseModel):

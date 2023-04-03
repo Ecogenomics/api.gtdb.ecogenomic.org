@@ -1,3 +1,4 @@
+import asyncio
 import os
 import subprocess
 import tempfile
@@ -5,7 +6,7 @@ from collections import defaultdict
 from functools import cmp_to_key
 from typing import List
 from typing import Tuple, Optional, Union, Dict, Collection, Literal
-import asyncio
+
 import numpy as np
 import sqlalchemy as sa
 from redis import Redis
@@ -22,7 +23,8 @@ from api.config import REDIS_HOST, REDIS_PASS, FASTANI_MAX_PAIRWISE, \
 from api.db.models import MetadataTaxonomy, Genome
 from api.exceptions import HttpBadRequest, HttpNotFound, HttpInternalServerError
 from api.model.fastani import FastAniJobResult, FastAniParameters, FastAniResult, FastAniJobRequest, FastAniConfig, \
-    FastAniResultData, FastAniJobHeatmap, FastAniJobHeatmapData, FastAniHeatmapDataStatus
+    FastAniResultData, FastAniJobHeatmap, FastAniJobHeatmapData, FastAniHeatmapDataStatus, FastAniJobInfo, \
+    FastAniJobStatus
 from api.util.collection import x_prod, deduplicate
 from api.util.common import is_valid_email
 from api.util.email import send_smtp_email
@@ -554,7 +556,7 @@ def report_fastani_job_failure(job, connection, type, value, traceback):
 
 
 def get_current_job_queue_position(job: Job, conn) -> Optional[int]:
-    return None # TODO
+    return None  # TODO
 
     # Jobs that are currently waiting on depdenencies will be in the deferred queue
     if not job.is_deferred:
@@ -575,7 +577,6 @@ def get_current_job_queue_position(job: Job, conn) -> Optional[int]:
     if job.origin == FASTANI_Q_LOW:
         previous_job_ids.update(conn.zrange(f'rq:deferred:{FASTANI_Q_NORMAL}', 0, -1))
 
-
     if job.origin == FASTANI_Q_LOW:
         prev_low_jobs = conn.zrange(f'rq:deferred:{job.origin}', 0, cur_pos - 1)
     elif job.origin == FASTANI_Q_NORMAL:
@@ -584,6 +585,39 @@ def get_current_job_queue_position(job: Job, conn) -> Optional[int]:
     # Get all jobs before this job in the queue, additionally make sure they're valid
 
 
+def get_fastani_job_info(job_id: str) -> FastAniJobInfo:
+    with Redis(host=REDIS_HOST, password=REDIS_PASS) as conn:
+        try:
+            job = Job.fetch(job_id, connection=conn)
 
-    return
+            # Check to see if the dependencies of the job are completed
+            if job.is_deferred or job.is_started:
+                status = FastAniJobStatus.RUNNING
 
+                all_finished = True
+                for job_dependency in job.fetch_dependencies():
+                    if job_dependency.is_failed:
+                        status = FastAniJobStatus.ERROR
+                        break
+                    all_finished = all_finished and job_dependency.is_finished
+
+                if status is not FastAniJobStatus.ERROR:
+                    if all_finished:
+                        status = FastAniJobStatus.FINISHED
+                    else:
+                        status = FastAniJobStatus.RUNNING
+            elif job.is_queued:
+                status = FastAniJobStatus.QUEUED
+            elif job.is_finished:
+                status = FastAniJobStatus.FINISHED
+            else:
+                status = FastAniJobStatus.ERROR
+
+            return FastAniJobInfo(
+                jobId=job_id,
+                createdOn=job.created_at.timestamp(),
+                status=status,
+            )
+        except NoSuchJobError:
+            raise HttpNotFound(f"No such job id: '{job_id}'")
+    raise HttpInternalServerError('Unable to fetch job')
