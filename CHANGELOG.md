@@ -1,3 +1,11 @@
+# [2.13.0](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.12.2...v2.13.0) (2023-04-03)
+
+
+### Features
+
+* **fastani:** Add method to find previous jobs. ([131c2dd](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/131c2ddc289e712bb8fa6a73515a1953dfd31398))
+* **tree:** Add LPSN URL to taxon. ([54b9d08](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/54b9d08a5afa57c6c5b29ab764a82ed13e052370))
+
 ## [2.12.2](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.12.1...v2.12.2) (2023-04-02)
 
 
