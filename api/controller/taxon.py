@@ -33,7 +33,8 @@ def get_taxon_descendants(taxon: str, db: Session) -> List[TaxonDescendants]:
         DbGtdbTree.type_material,
         DbGtdbTree.n_desc_children,
         DbGtdbTree.bergeys_url,
-        DbGtdbTree.seqcode_url
+        DbGtdbTree.seqcode_url,
+        DbGtdbTree.lpsn_url
     ]) \
         .filter(DbGtdbTreeChildren.child_id == DbGtdbTree.id) \
         .where(DbGtdbTreeChildren.parent_id == parent_id) \
@@ -47,7 +48,8 @@ def get_taxon_descendants(taxon: str, db: Session) -> List[TaxonDescendants]:
                                typeMaterial=result.type_material,
                                nDescChildren=result.n_desc_children,
                                bergeysUrl=result.bergeys_url,
-                               seqcodeUrl=result.seqcode_url)
+                               seqcodeUrl=result.seqcode_url,
+                               lpsnUrl=result.lpsn_url)
 
 
 def search_for_taxon(taxon: str, limit: Optional[int], db: Session) -> TaxonSearchResponse:

@@ -481,6 +481,7 @@ class DbGtdbTree(GtdbWebBase):
     n_desc_children = Column(Integer)
     bergeys_url = Column(Text)
     seqcode_url = Column(Text)
+    lpsn_url = Column(Text)
 
 
 class DbGtdbTreeChildren(GtdbWebBase):
