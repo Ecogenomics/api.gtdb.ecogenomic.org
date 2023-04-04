@@ -1,3 +1,10 @@
+# [2.14.0](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.13.0...v2.14.0) (2023-04-04)
+
+
+### Features
+
+* **tree:** Add NCBI URL to taxon. ([d236e33](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/d236e335772d41a155509c64a84d71500d7bde5c))
+
 # [2.13.0](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.12.2...v2.13.0) (2023-04-03)
 
 
