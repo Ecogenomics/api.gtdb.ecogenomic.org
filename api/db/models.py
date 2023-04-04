@@ -482,6 +482,7 @@ class DbGtdbTree(GtdbWebBase):
     bergeys_url = Column(Text)
     seqcode_url = Column(Text)
     lpsn_url = Column(Text)
+    ncbi_taxid = Column(Integer)
 
 
 class DbGtdbTreeChildren(GtdbWebBase):

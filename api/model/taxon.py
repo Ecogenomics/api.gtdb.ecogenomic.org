@@ -14,6 +14,7 @@ class TaxonDescendants(BaseModel):
     bergeysUrl: Optional[str] = Field(None)
     seqcodeUrl: Optional[str] = Field(None)
     lpsnUrl: Optional[str] = Field(None)
+    ncbiTaxId: Optional[int] = Field(None)
 
 
 class TaxonSearchResponse(BaseModel):
