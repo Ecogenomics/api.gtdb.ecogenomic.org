@@ -6,11 +6,11 @@ from sqlalchemy import sql
 from sqlalchemy.orm import Session
 
 from api.db.models import GtdbSpeciesClusterCount, DbGtdbTree, DbGtdbTreeChildren, GtdbWebTaxonHist, MetadataTaxonomy, \
-    Genome, MetadataNucleotide
-from api.exceptions import HttpBadRequest
+    Genome, MetadataNucleotide, MetadataNcbi
+from api.exceptions import HttpBadRequest, HttpNotFound
 from api.model.graph import GraphHistogramBin
 from api.model.taxon import TaxonDescendants, TaxonSearchResponse, TaxonPreviousReleases, TaxonCard, \
-    TaxonPreviousReleasesPaginated
+    TaxonPreviousReleasesPaginated, TaxonGenomesDetailResponse, TaxonGenomesDetailRow
 
 
 def get_taxon_descendants(taxon: str, db: Session) -> List[TaxonDescendants]:
@@ -353,3 +353,87 @@ def get_taxon_card(taxon: str, db_gtdb: Session, db_web: Session) -> TaxonCard:
         inReleases=[],
         higherRanks=higher_ranks_out
     )
+
+
+def get_taxon_genomes_detail(taxon: str, db: Session) -> TaxonGenomesDetailResponse:
+    idx_to_tax_col = (
+        MetadataTaxonomy.gtdb_domain,
+        MetadataTaxonomy.gtdb_phylum,
+        MetadataTaxonomy.gtdb_class,
+        MetadataTaxonomy.gtdb_order,
+        MetadataTaxonomy.gtdb_family,
+        MetadataTaxonomy.gtdb_genus,
+        MetadataTaxonomy.gtdb_species,
+    )
+    idx_to_rank = ('Domain', 'Phylum', 'Class', 'Order', 'Family', 'Genus', 'Species')
+
+    # Select the target column to search
+    if taxon.startswith('d__'):
+        rank_idx = 0
+    elif taxon.startswith('p__'):
+        rank_idx = 1
+    elif taxon.startswith('c__'):
+        rank_idx = 2
+    elif taxon.startswith('o__'):
+        rank_idx = 3
+    elif taxon.startswith('f__'):
+        rank_idx = 4
+    elif taxon.startswith('g__'):
+        rank_idx = 5
+    elif taxon.startswith('s__'):
+        rank_idx = 6
+    else:
+        raise HttpBadRequest(f'Invalid taxon {taxon}')
+    target_col = idx_to_tax_col[rank_idx]
+
+    query_n_gids = sa.select([
+        Genome.name,
+        MetadataTaxonomy.gtdb_domain,
+        MetadataTaxonomy.gtdb_phylum,
+        MetadataTaxonomy.gtdb_class,
+        MetadataTaxonomy.gtdb_order,
+        MetadataTaxonomy.gtdb_family,
+        MetadataTaxonomy.gtdb_genus,
+        MetadataTaxonomy.gtdb_species,
+        MetadataTaxonomy.gtdb_representative
+    ]).\
+        select_from(sa.join(Genome, MetadataTaxonomy).join(MetadataNcbi)).\
+        where(target_col == taxon).\
+        where(Genome.id == MetadataTaxonomy.id).\
+        where(Genome.id == MetadataNcbi.id).\
+        where(MetadataNcbi.ncbi_genbank_assembly_accession != None).\
+        where(MetadataTaxonomy.gtdb_domain != 'd__').\
+        where(MetadataTaxonomy.gtdb_phylum != 'p__').\
+        where(MetadataTaxonomy.gtdb_class != 'c__').\
+        where(MetadataTaxonomy.gtdb_order != 'o__').\
+        where(MetadataTaxonomy.gtdb_family != 'f__').\
+        where(MetadataTaxonomy.gtdb_genus != 'g__').\
+        where(MetadataTaxonomy.gtdb_species != 's__').\
+        order_by(MetadataTaxonomy.gtdb_domain).\
+        order_by(MetadataTaxonomy.gtdb_phylum).\
+        order_by(MetadataTaxonomy.gtdb_class).\
+        order_by(MetadataTaxonomy.gtdb_order).\
+        order_by(MetadataTaxonomy.gtdb_family).\
+        order_by(MetadataTaxonomy.gtdb_genus).\
+        order_by(MetadataTaxonomy.gtdb_species).\
+        order_by(MetadataTaxonomy.gtdb_representative.desc()).\
+        order_by(Genome.name)
+    db_rows = db.execute(query_n_gids).fetchall()
+    if len(db_rows) == 0:
+        raise HttpNotFound(f'Taxon {taxon} not found')
+
+    rows_out = list()
+    for row in db_rows:
+        rows_out.append(TaxonGenomesDetailRow(
+            gid=row['name'],
+            gtdbIsRep=row['gtdb_representative'],
+            gtdbDomain=row['gtdb_domain'],
+            gtdbPhylum=row['gtdb_phylum'],
+            gtdbClass=row['gtdb_class'],
+            gtdbOrder=row['gtdb_order'],
+            gtdbFamily=row['gtdb_family'],
+            gtdbGenus=row['gtdb_genus'],
+            gtdbSpecies=row['gtdb_species'],
+        ))
+
+    return TaxonGenomesDetailResponse(rows=rows_out)

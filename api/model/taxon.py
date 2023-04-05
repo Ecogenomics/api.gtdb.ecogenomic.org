@@ -38,3 +38,18 @@ class TaxonCard(BaseModel):
     rank: str = Field(..., description='the rank of this taxon', example='domain')
     inReleases: List[str] = Field(..., description='a list of releases this taxon has appeared in (sorted)', example='[R80, R95]')
     higherRanks: List[str] = Field(..., description='a list of higher ranks for this taxon')
+
+
+class TaxonGenomesDetailRow(BaseModel):
+    gid: str = Field(..., description='the genome identifier', example='GCA_000001515.4')
+    gtdbIsRep: bool = Field(..., description='whether this genome is a GTDB representative genome')
+    gtdbDomain: str = Field(..., description='the domain of this genome', example='Bacteria')
+    gtdbPhylum: str = Field(..., description='the phylum of this genome', example='Proteobacteria')
+    gtdbClass: str = Field(..., description='the class of this genome', example='Gammaproteobacteria')
+    gtdbOrder: str = Field(..., description='the order of this genome', example='Enterobacterales')
+    gtdbFamily: str = Field(..., description='the family of this genome', example='Enterobacteriaceae')
+    gtdbGenus: str = Field(..., description='the genus of this genome', example='Escherichia')
+    gtdbSpecies: str = Field(..., description='the species of this genome', example='Escherichia coli')
+
+class TaxonGenomesDetailResponse(BaseModel):
+    rows: List[TaxonGenomesDetailRow] = Field(..., description='a collection of genomes in this taxon')
