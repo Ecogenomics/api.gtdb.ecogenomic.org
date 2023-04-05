@@ -1,3 +1,15 @@
+# [2.15.0](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.14.0...v2.15.0) (2023-04-05)
+
+
+### Bug Fixes
+
+* **fastani:** Filter out genomes that do not exist in the database. ([b9396c7](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/b9396c7d4188cf1de2f799318331d8c9247293ea))
+
+
+### Features
+
+* **taxon:** Add additional data for taxon card ([f611821](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/f6118210e7798354109a03646193d39eddcf144e))
+
 # [2.14.0](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.13.0...v2.14.0) (2023-04-04)
 
 
