@@ -20,7 +20,7 @@ from api.config import REDIS_HOST, REDIS_PASS, FASTANI_MAX_PAIRWISE, \
     FASTANI_Q_NORMAL, FASTANI_Q_PRIORITY, FASTANI_PRIORITY_SECRET, FASTANI_BIN, FASTANI_JOB_TIMEOUT, \
     FASTANI_JOB_RESULT_TTL, FASTANI_JOB_FAIL_TTL, FASTANI_JOB_RETRY, FASTANI_GENOME_DIR, FASTANI_Q_LOW, \
     FASTANI_MAX_PAIRWISE_LOW
-from api.db.models import MetadataTaxonomy, Genome
+from api.db.models import MetadataTaxonomy, Genome, GtdbCommonGenomes
 from api.exceptions import HttpBadRequest, HttpNotFound, HttpInternalServerError
 from api.model.fastani import FastAniJobResult, FastAniParameters, FastAniResult, FastAniJobRequest, FastAniConfig, \
     FastAniResultData, FastAniJobHeatmap, FastAniJobHeatmapData, FastAniHeatmapDataStatus, FastAniJobInfo, \
@@ -158,7 +158,7 @@ def prepare_fastani_single_job(gid_a: str, gid_b: str, job_id: str, params: Fast
                               failure_ttl=FASTANI_JOB_FAIL_TTL, retry=FASTANI_JOB_RETRY)
 
 
-def enqueue_fastani(request: FastAniJobRequest) -> FastAniJobResult:
+def enqueue_fastani(request: FastAniJobRequest, db: Session) -> FastAniJobResult:
     """Enqueue FastANI jobs and return a unique ID to the user."""
 
     # Validate e-mail address is valid if provided
@@ -172,6 +172,18 @@ def enqueue_fastani(request: FastAniJobRequest) -> FastAniJobResult:
 
     # Validation
     validate_genomes(q_genomes, r_genomes)
+
+    # Subset the genomes to those that are in the database
+    all_genomes = set(q_genomes).union(set(r_genomes))
+    query = sa.select([GtdbCommonGenomes.name]).where(GtdbCommonGenomes.name.in_(all_genomes))
+    results = db.execute(query).fetchall()
+    genomes_in_db = {x.name for x in results}
+    q_genomes = [x for x in q_genomes if x in genomes_in_db]
+    r_genomes = [x for x in r_genomes if x in genomes_in_db]
+
+    # Validate that there are still results
+    if len(q_genomes) == 0 or len(r_genomes) == 0:
+        raise HttpBadRequest('No comparisons could be made as one or more genomes were not found in the database.')
 
     # Generate all unique FastANI job ids
     unique_ids = get_unique_job_ids(q_genomes, r_genomes, request.parameters)

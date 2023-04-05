@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from api.controller.fastani import enqueue_fastani, get_fastani_job_progress, fastani_job_to_rows, get_fastani_config, \
     fastani_heatmap, get_fastani_job_info
-from api.db import get_gtdb_db
+from api.db import get_gtdb_db, get_gtdb_common_db
 from api.model.fastani import FastAniJobResult, FastAniJobRequest, FastAniConfig, FastAniJobHeatmap, FastAniJobInfo, \
     FastAniJobStatus
 from api.util.io import rows_to_delim
@@ -17,8 +17,8 @@ router = APIRouter(prefix='/fastani', tags=['fastani'])
 
 
 @router.post("", response_model=FastAniJobResult, summary='Create a new FastANI job.')
-async def fastani_view(job_request: FastAniJobRequest):
-    return enqueue_fastani(job_request)
+async def fastani_view(job_request: FastAniJobRequest, db: Session= Depends(get_gtdb_common_db)):
+    return enqueue_fastani(job_request, db)
 
 
 @router.get('/config', response_model=FastAniConfig,
