@@ -1,7 +1,7 @@
 from sqlalchemy import CHAR, Boolean, Column, Date, DateTime, Float, \
     ForeignKey, Integer, Text, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import DOUBLE_PRECISION, BIGINT
-from sqlalchemy.dialects.postgresql import JSON
+from sqlalchemy.dialects.postgresql import JSON, TIMESTAMP
 from sqlalchemy.orm import relationship
 
 from api.db import GtdbBase, GtdbWebBase, GtdbCommonBase
@@ -580,3 +580,77 @@ class GtdbCommonGenomes(GtdbCommonBase):
     name = Column(Text)
     fna_gz_md5 = Column(Text)
     assembly_url = Column(Text)
+
+
+class GtdbCommonLpsnHtml(GtdbCommonBase):
+    __tablename__ = 'lpsn_html'
+    id = Column(Integer, primary_key=True)
+    url = Column(Text, nullable=False)
+    created = Column(TIMESTAMP, nullable=False)
+    updated = Column(TIMESTAMP, nullable=False)
+    html = Column(Text, nullable=True)
+    to_process = Column(Boolean, nullable=False, default=True)
+
+    # Output columns
+    name = Column(Text, nullable=True)
+    category = Column(Text, nullable=True)
+    proposed_as = Column(Text, nullable=True)
+    etymology = Column(Text, nullable=True)
+    original_publication = Column(Text, nullable=True)
+    original_publication_doi = Column(Text, nullable=True)
+    nomenclatural_status = Column(Text, nullable=True)
+    n_child_correct = Column(Integer, nullable=True)
+    n_child_synonym = Column(Integer, nullable=True)
+    n_child_total = Column(Integer, nullable=True)
+    parent_taxon = Column(ForeignKey('lpsn_html.id'), nullable=True)
+    assigned_by = Column(Text, nullable=True)
+    assigned_by_doi = Column(Text, nullable=True)
+    record_number = Column(Integer, nullable=True)
+    type_genus = Column(ForeignKey('lpsn_html.id'), nullable=True)
+    gender = Column(Text, nullable=True)
+    valid_publication = Column(Text, nullable=True)
+    valid_publication_doi = Column(Text, nullable=True)
+    ijsem_list = Column(Text, nullable=True)
+    ijsem_list_doi = Column(Text, nullable=True)
+    taxonomic_status = Column(Text, nullable=True)
+    type_order = Column(ForeignKey('lpsn_html.id'), nullable=True)
+    type_class = Column(ForeignKey('lpsn_html.id'), nullable=True)
+    effective_publication = Column(Text, nullable=True)
+    effective_publication_doi = Column(Text, nullable=True)
+    emendations = Column(Text, nullable=True)
+    type_subgenus = Column(ForeignKey('lpsn_html.id'), nullable=True)
+    type_species = Column(ForeignKey('lpsn_html.id'), nullable=True)
+    tygs = Column(Text, nullable=True)
+    type_strain = Column(Text, nullable=True)
+    ssu_ggdc = Column(Text, nullable=True)
+    ssu_fasta = Column(Text, nullable=True)
+    ssu_ebi = Column(Text, nullable=True)
+    ssu_ncbi = Column(Text, nullable=True)
+    ssu = Column(Text, nullable=True)
+    strain_info = Column(Text, nullable=True)
+    risk_group = Column(Integer, nullable=True)
+    basonym = Column(ForeignKey('lpsn_html.id'), nullable=True)
+
+
+class GtdbCommonLpsnHtmlNotes(GtdbCommonBase):
+    __tablename__ = 'lpsn_html_notes'
+    id = Column(Integer, primary_key=True)
+    page_id = Column(ForeignKey('lpsn_html.id'), nullable=False)
+    doi = Column(Text, nullable=True)
+    note = Column(Text, nullable=True)
+
+
+class GtdbCommonLpsnHtmlChildTaxa(GtdbCommonBase):
+    __tablename__ = 'lpsn_html_child_taxa'
+    id = Column(Integer, primary_key=True)
+    parent_page_id = Column(ForeignKey('lpsn_html.id'), nullable=False)
+    child_page_id = Column(ForeignKey('lpsn_html.id'), nullable=False)
+    nomenclatural_status = Column(Text, nullable=True)
+    taxonomic_status = Column(Text, nullable=True)
+
+class GtdbCommonLpsnHtmlSynonyms(GtdbCommonBase):
+    __tablename__ = 'lpsn_html_synonyms'
+    id = Column(Integer, primary_key=True)
+    page_id = Column(ForeignKey('lpsn_html.id'), nullable=False)
+    synonym_id = Column(ForeignKey('lpsn_html.id'), nullable=False)
+    kind = Column(Text, nullable=False)
