@@ -1,3 +1,10 @@
+# [2.16.0](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.15.0...v2.16.0) (2023-04-14)
+
+
+### Features
+
+* **lpsn:** Update LPSN scraping to use DB backend. ([9677ae5](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/9677ae58c9a286e3cfb7c32051d1ad68589025bf))
+
 # [2.15.0](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.14.0...v2.15.0) (2023-04-05)
 
 
