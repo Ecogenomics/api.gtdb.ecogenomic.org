@@ -17,10 +17,10 @@ def get_search_sankey(request: SankeySearchRequest, db: Session) -> SankeySearch
     if search is None or len(search) <= 3:
         raise HttpBadRequest('Unsupported query, the rank must be > 3 characters.')
 
-    dict_releases = {'R80': 0, 'R83': 1, 'R86.2': 2, 'R89': 3, 'R95': 4, 'R202': 5, 'R207': 6, 'NCBI': 7}
-    list_releases = ['R80', 'R83', 'R86.2', 'R89', 'R95', 'R202', 'R207', 'NCBI']
+    dict_releases = {'R80': 0, 'R83': 1, 'R86.2': 2, 'R89': 3, 'R95': 4, 'R202': 5, 'R207': 6, 'R214': 7, 'NCBI': 8}
+    list_releases = ['R80', 'R83', 'R86.2', 'R89', 'R95', 'R202', 'R207', 'R214', 'NCBI']
     long_releases = ['Release 80', 'Release 83', 'Release 86.2', 'Release 89', 'Release 95',
-                     'Release 202', 'Release 207', 'NCBI']
+                     'Release 202', 'Release 207', 'Release 214', 'NCBI']
     long_to_short = {'Release 80': 'R80',
                      'Release 83': 'R83',
                      'Release 86.2': 'R86.2',
@@ -28,6 +28,7 @@ def get_search_sankey(request: SankeySearchRequest, db: Session) -> SankeySearch
                      'Release 95': 'R95',
                      'Release 202': 'R202',
                      'Release 207': 'R207',
+                     'Release 214': 'R214',
                      'NCBI': 'NCBI'}
     if release_from is None or release_from not in dict_releases:
         raise HttpBadRequest('You must select a release to search from.')
@@ -70,7 +71,7 @@ def get_search_sankey(request: SankeySearchRequest, db: Session) -> SankeySearch
         within = {x.rank for x in results}
 
     # Get a row containing the genome and which ranks it was in for each release.
-    query = sql.text("""SELECT genome_id, "R80", "R83", "R86.2", "R89", "R95", "R202", "R207", "NCBI"
+    query = sql.text("""SELECT genome_id, "R80", "R83", "R86.2", "R89", "R95", "R202", "R207", "R214","NCBI"
                               FROM CROSSTAB(
                                            'SELECT genome_id, release_ver, CONCAT(rank_domain, '';'', rank_phylum, '';'',
         rank_class, '';'', rank_order, '';'', rank_family, '';'', rank_genus, '';'', rank_species) AS taxonomy
@@ -82,7 +83,7 @@ def get_search_sankey(request: SankeySearchRequest, db: Session) -> SankeySearch
                             ORDER BY genome_id ASC, release_ver ASC;'
                                                        ,
                                    'SELECT DISTINCT release_ver FROM taxon_hist ORDER BY release_ver ASC')
-                               AS ct (genome_id CHAR(10), "NCBI" VARCHAR, "R202" VARCHAR, "R207" VARCHAR, "R80" VARCHAR, "R83" VARCHAR, "R86.2" VARCHAR,
+                               AS ct (genome_id CHAR(10), "NCBI" VARCHAR, "R202" VARCHAR, "R207" VARCHAR, "R214" VARCHAR, "R80" VARCHAR, "R83" VARCHAR, "R86.2" VARCHAR,
                                       "R89" VARCHAR, "R95" VARCHAR);""".format(col=rank_col, sql_ranks=sql_ranks))
     results = db.execute(query, {'rank': search})
 
