@@ -63,8 +63,8 @@ path_gtdb_tree = '/Users/aaron/Desktop/bergeys/gtdb_tree.tsv'
 
 PATH_CACHE = '/Users/aaron/Desktop/bergeys/cache.tsv'
 
-PATH_R207_BAC = '/Users/aaron/Desktop/bergeys/bac120_taxonomy_r207.tsv'
-PATH_R207_ARC = '/Users/aaron/Desktop/bergeys/ar53_taxonomy_r207.tsv'
+PATH_R207_BAC = '/Users/aaron/Desktop/bergeys/bac120_taxonomy_r214.tsv'
+PATH_R207_ARC = '/Users/aaron/Desktop/bergeys/ar53_taxonomy_r214.tsv'
 
 def parse_html(path):
     print(f'Processing: {path}')
@@ -135,7 +135,7 @@ def read_gtdb_tree_table() -> Dict[str, Dict[str, Tuple[int, str]]]:
     """This is an export of the GTDB tree table from the GTDB website."""
     db = GtdbWebSession()
     try:
-        query = sa.select([DbGtdbTree.id, DbGtdbTree.taxon]).where(DbGtdbTree.type != 'genome').where( DbGtdbTree.taxon != 'root')
+        query = sa.select([DbGtdbTree.id, DbGtdbTree.taxon]).where(DbGtdbTree.type != 'genome').where( DbGtdbTree.taxon != 'root').where(DbGtdbTree.bergeys_url == None)
         results = db.execute(query).fetchall()
 
         out = defaultdict(dict)

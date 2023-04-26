@@ -674,3 +674,17 @@ class GtdbCommonLpsnHtmlSynonyms(GtdbCommonBase):
     page_id = Column(ForeignKey('lpsn_html.id'), nullable=False)
     synonym_id = Column(ForeignKey('lpsn_html.id'), nullable=False)
     kind = Column(Text, nullable=False)
+
+
+class GtdbCommonSeqCodeHtml(GtdbCommonBase):
+    __tablename__ = 'seqcode_html'
+    id = Column(Integer, primary_key=True)
+    name = Column(Text)
+    rank = Column(Text)
+    domain_id = Column(ForeignKey('seqcode_html.id'), nullable=True)
+    phylum_id = Column(ForeignKey('seqcode_html.id'), nullable=True)
+    class_id = Column(ForeignKey('seqcode_html.id'), nullable=True)
+    order_id = Column(ForeignKey('seqcode_html.id'), nullable=True)
+    family_id = Column(ForeignKey('seqcode_html.id'), nullable=True)
+    genus_id = Column(ForeignKey('seqcode_html.id'), nullable=True)
+    species_id = Column(ForeignKey('seqcode_html.id'), nullable=True)
