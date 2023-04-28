@@ -118,7 +118,7 @@ class AdvancedSearchColumn(Enum):
     GTDB_TAXONOMY = 1, 'GTDB Taxonomy', AdvancedDataType.STRING, MetadataView.gtdb_taxonomy, [], 'Taxonomic Information'
     NCBI_TAXONOMY = 2, 'NCBI Taxonomy', AdvancedDataType.STRING, MetadataView.ncbi_taxonomy, [], 'Taxonomic Information'
     NCBI_STRAIN_ID = 3, 'NCBI Strain Identifiers', AdvancedDataType.STRING, MetadataView.ncbi_strain_identifiers, [], 'Taxonomic Information'
-    GTDB_TYPE_MAT = 4, 'GTDB Type Material', AdvancedDataType.ENUM, MetadataView.gtdb_type_designation, \
+    GTDB_TYPE_MAT = 4, 'GTDB Type Material', AdvancedDataType.ENUM, MetadataView.gtdb_type_designation_ncbi_taxa, \
                     [AdvancedSearchOption.NOT_TYPE_MAT,
                      AdvancedSearchOption.TYPE_STRAIN_OF_SPECIES,
                      AdvancedSearchOption.TYPE_STRAIN_OF_SUBSP,

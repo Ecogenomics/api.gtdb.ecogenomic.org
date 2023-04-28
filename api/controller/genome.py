@@ -172,8 +172,8 @@ def genome_card(accession: str, db_gtdb: Session, db_web: Session) -> GenomeCard
         for idv_rank in metadata_taxonomy.ncbi_taxonomy.split(';'):
             if idv_rank in ranks_ncbi:
                 rank_list.append(
-                    '<a target="_blank" href="https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=' + ranks_ncbi.get(
-                        idv_rank) + '">' + idv_rank + '</a>')
+                    '<a target="_blank" href="https://www.ncbi.nlm.nih.gov/data-hub/taxonomy/' + ranks_ncbi.get(
+                        idv_rank) + '/">' + idv_rank + '</a>')
                 ncbi_taxonomy_filtered.append(GenomeNcbiTaxon(taxon=idv_rank, taxonId=ranks_ncbi.get(idv_rank)))
             else:
                 rank_list.append(idv_rank)
@@ -184,8 +184,8 @@ def genome_card(accession: str, db_gtdb: Session, db_web: Session) -> GenomeCard
         for idv_rank in metadata_taxonomy.ncbi_taxonomy_unfiltered.split(';'):
             if idv_rank in ranks_ncbi:
                 rank_list_unfiltered.append(
-                    '<a target="_blank" href="https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=' + ranks_ncbi.get(
-                        idv_rank) + '">' + idv_rank + '</a>')
+                    '<a target="_blank" href="https://www.ncbi.nlm.nih.gov/data-hub/taxonomy/' + ranks_ncbi.get(
+                        idv_rank) + '/">' + idv_rank + '</a>')
                 ncbi_taxonomy_unfiltered.append(GenomeNcbiTaxon(taxon=idv_rank, taxonId=ranks_ncbi.get(idv_rank)))
             else:
                 rank_list_unfiltered.append(idv_rank)
@@ -222,8 +222,8 @@ def genome_card(accession: str, db_gtdb: Session, db_web: Session) -> GenomeCard
                                            coding_density=metadata_gene.coding_density)
 
     out_metadata_type_material = GenomeMetadataTypeMaterial(
-        gtdbTypeDesignation=metadata_type_material.gtdb_type_designation,
-        gtdbTypeDesignationSources=metadata_type_material.gtdb_type_designation_sources,
+        gtdbTypeDesignation=metadata_type_material.gtdb_type_designation_ncbi_taxa,
+        gtdbTypeDesignationSources=metadata_type_material.gtdb_type_designation_ncbi_taxa_sources,
         lpsnTypeDesignation=metadata_type_material.lpsn_type_designation,
         dsmzTypeDesignation=metadata_type_material.dsmz_type_designation,
         lpsnPriorityYear=metadata_type_material.lpsn_priority_year,
@@ -288,7 +288,7 @@ def genome_card(accession: str, db_gtdb: Session, db_web: Session) -> GenomeCard
                       metadata_gene=out_metadata_gene,
                       metadata_ncbi=out_metadata_ncbi,
                       metadataTaxonomy=out_metadata_taxonomy,
-                      gtdbTypeDesignation=metadata_type_material.gtdb_type_designation,
+                      gtdbTypeDesignation=metadata_type_material.gtdb_type_designation_ncbi_taxa,
                       subunit_summary=subunit_summary,
                       speciesClusterCount=species_cluster_count,
                       metadata_type_material=out_metadata_type_material,

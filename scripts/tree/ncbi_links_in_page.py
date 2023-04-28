@@ -1,4 +1,7 @@
+import json
 import tempfile
+
+from api.util.collection import iter_batches
 
 if __name__ == '__main__':
     from dotenv import load_dotenv
@@ -9,8 +12,8 @@ if __name__ == '__main__':
 import os
 
 
-from api.db import GtdbWebSession
-from api.db.models import DbGtdbTree
+from api.db import GtdbWebSession, GtdbSession
+from api.db.models import DbGtdbTree, Genome, MetadataTaxonomy, GtdbWebGenomeTaxId
 import requests
 
 import os
@@ -23,17 +26,6 @@ from tqdm import tqdm
 import hashlib
 
 """
-1. Copy across the following files into a temporary directory:
-
-mkdir -p /tmp/lpsn/files
-zcp /srv/db/gtdb/metadata/release214/lpsn/phylum_list.lst /tmp/lpsn/files/phylum_list.tsv
-zcp /srv/db/gtdb/metadata/release214/lpsn/class_list.lst /tmp/lpsn/files/class_list.tsv
-zcp /srv/db/gtdb/metadata/release214/lpsn/order_list.lst /tmp/lpsn/files/order_list.tsv
-zcp /srv/db/gtdb/metadata/release214/lpsn/family_list.lst /tmp/lpsn/files/family_list.tsv
-zcp /srv/db/gtdb/metadata/release214/lpsn/genus_list.lst /tmp/lpsn/files/genus_list.tsv
-zcp /srv/db/gtdb/metadata/release214/lpsn/species_list.lst /tmp/lpsn/files/species_list.tsv
-
-zcp /srv/db/gtdb/metadata/release214/lpsn/parse_html/all_ranks/full_parsing_parsed.tsv /tmp/lpsn/full_data.tsv
 
 """
 
@@ -95,7 +87,7 @@ def read_nodes(path):
 def download_ncbi_taxdump():
 
     expected_md5 = download_ncbi_taxdump_md5()
-
+    banned_names = set()
     # Download the file
     with tempfile.TemporaryDirectory() as tmp_dir:
         path_gz_tmp = os.path.join(tmp_dir, 'taxdump.tar.gz')
@@ -132,7 +124,32 @@ def download_ncbi_taxdump():
             if taxid not in d_nodes:
                 continue
             rank = d_nodes[taxid]
-            out[taxid] = (rank, names)
+
+            if rank == 'domain':
+                name_parsed = f'd__{names}'
+            elif rank == 'phylum':
+                name_parsed = f'p__{names}'
+            elif rank == 'class':
+                name_parsed = f'c__{names}'
+            elif rank == 'order':
+                name_parsed = f'o__{names}'
+            elif rank == 'family':
+                name_parsed = f'f__{names}'
+            elif rank == 'genus':
+                name_parsed = f'g__{names}'
+            elif rank == 'species':
+                name_parsed = f's__{names}'
+            else:
+                name_parsed = f'x__{names}'
+
+            if name_parsed in banned_names:
+                continue
+
+            if name_parsed in out and str(taxid) != out[name_parsed]:
+                print(f'Deleting: {name_parsed} {out[name_parsed]} {taxid}')
+                del out[name_parsed]
+                banned_names.add(name_parsed)
+            out[name_parsed] = str(taxid)
         return out
 
 
@@ -154,36 +171,79 @@ def remove_suprious_names(d_ncbi_data, d_gtdb_tree):
     print(f'Missing: {n_missing:,}')
     return out
 
+def read_previous_release_dump():
+    path = '/tmp/genome_taxid.tsv'
+    out = dict()
+    with open(path) as f:
+        for line in tqdm(f.readlines()):
+            gid, payload = line.strip().split('\t')
+            if payload == '{}':
+                continue
+            payload = json.loads(payload.strip()[1:-1].replace('""', '"'))
+            for taxon, taxid in payload.items():
+                out[taxon] = taxid
+    return out
+
+def read_from_gids():
+    db = GtdbSession()
+    query = sa.select([Genome.name, MetadataTaxonomy.ncbi_taxonomy, MetadataTaxonomy.ncbi_taxonomy_unfiltered]).join(MetadataTaxonomy, MetadataTaxonomy.id == Genome.id)
+    results = db.execute(query).fetchall()
+
+    out = dict()
+    for result in tqdm(results):
+        out[result.name] = dict(result)
+    return out
+
 def main():
+
+    d_gids = read_from_gids()
+
+    d_ncbi_previous = read_previous_release_dump()
 
     # Read the NCBI taxdump
     d_ncbi_data = download_ncbi_taxdump()
 
-    # Read the data from the db
-    d_gtdb_tree = read_gtdb_tree_table()
+    rows = list()
+    for gid, d_info in tqdm(d_gids.items()):
+        cur_values = dict()
+        for rank in d_info['ncbi_taxonomy'].split(';'):
+            if len(rank) == 3:
+                continue
+            if rank in d_ncbi_previous:
+                taxid = d_ncbi_previous[rank]
+            elif rank in d_ncbi_data:
+                taxid = d_ncbi_data[rank]
+            else:
+                print(f'No match for {gid} {rank}')
+                continue
+            cur_values[rank] = taxid
+        for rank in d_info['ncbi_taxonomy_unfiltered'].split(';'):
+            if len(rank) == 3:
+                continue
+            if rank in d_ncbi_previous:
+                taxid = d_ncbi_previous[rank]
+            elif rank in d_ncbi_data:
+                taxid = d_ncbi_data[rank]
+            else:
+                print(f'No match for {gid} {rank}')
+                continue
+            if rank in cur_values and cur_values[rank] != taxid:
+                print(f'Overwriting {gid} {rank} {cur_values[rank]} {taxid}')
+            cur_values[rank] = taxid
+        rows.append((gid, cur_values))
 
-    # Match the data
-    print('Removing suprious names from NCBI')
-    d_ncbi_taxon_to_rank_and_taxid = remove_suprious_names(d_ncbi_data, d_gtdb_tree)
-
-    to_sql_write = list()
-
-    for ncbi_taxon, (ncbi_rank, ncbi_taxid) in d_ncbi_taxon_to_rank_and_taxid.items():
-
-        if ncbi_rank == 'superkingdom':
-            ncbi_taxon_prefixed = f'd__{ncbi_taxon}'
-        elif ncbi_rank == 'subclass':
-            ncbi_taxon_prefixed = f'c__{ncbi_taxon}'
-        else:
-            ncbi_taxon_prefixed = f'{ncbi_rank[0]}__{ncbi_taxon}'
-
-        gtdb_id = d_gtdb_tree[ncbi_taxon_prefixed]
-
-        to_sql_write.append(f'UPDATE gtdb_tree SET ncbi_taxid={ncbi_taxid} WHERE id={gtdb_id};')
+    db = GtdbWebSession()
+    batches = list(iter_batches(rows, 1000))
+    for batch in tqdm(batches, total=len(batches)):
+        for item in batch:
+            obj = sa.insert(GtdbWebGenomeTaxId).values(genome_id=item[0], payload=item[1])
+            db.execute(obj)
+        db.commit()
 
 
-    with open('/tmp/ncbi_sql.txt', 'w') as f:
-        f.write('\n'.join(to_sql_write))
+
+
+
 
     return
 

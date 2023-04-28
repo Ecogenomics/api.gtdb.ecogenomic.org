@@ -203,8 +203,8 @@ class MetadataTypeMaterial(GtdbBase):
     __tablename__ = 'metadata_type_material'
 
     id = Column(ForeignKey('genomes.id'), primary_key=True)
-    gtdb_type_designation = Column(Text)
-    gtdb_type_designation_sources = Column(Text)
+    gtdb_type_designation_ncbi_taxa = Column(Text)
+    gtdb_type_designation_ncbi_taxa_sources = Column(Text)
     lpsn_type_designation = Column(Text)
     dsmz_type_designation = Column(Text)
     lpsn_priority_year = Column(Integer)
@@ -410,12 +410,32 @@ class MetadataView(GtdbBase):
     gtdb_species_type_strain = Column(Boolean)
     gtdb_cluster_size = Column(BIGINT)
     gtdb_clustered_genomes = Column(Text)
-    gtdb_type_designation = Column(Text)
-    gtdb_type_designation_sources = Column(Text)
+    gtdb_type_designation_ncbi_taxa = Column(Text)
+    gtdb_type_designation_ncbi_taxa_sources = Column(Text)
     lpsn_type_designation = Column(Text)
     dsmz_type_designation = Column(Text)
     lpsn_priority_year = Column(Integer)
     gtdb_type_species_of_genus = Column(Boolean)
+    seqcode_id = Column(Integer)
+    seqcode_name = Column(Text)
+    seqcode_rank = Column(Text)
+    seqcode_species_status = Column(Text)
+    seqcode_genus_status = Column(Text)
+    seqcode_family_status = Column(Text)
+    seqcode_order_status = Column(Text)
+    seqcode_class_status = Column(Text)
+    seqcode_phylum_status = Column(Text)
+    seqcode_type_species_of_genus = Column(Boolean)
+    seqcode_type_genus_of_family = Column(Boolean)
+    seqcode_type_family_of_order = Column(Boolean)
+    seqcode_type_order_of_class = Column(Boolean)
+    seqcode_type_class_of_phylum = Column(Boolean)
+    seqcode_classification = Column(Text)
+    seqcode_proposed_by = Column(Text)
+    seqcode_created_at = Column(Text)
+    seqcode_updated_at = Column(Text)
+    seqcode_url = Column(Text)
+    seqcode_priority_date = Column(Text)
 
 
 class GenomeLists(GtdbBase):  # OK
@@ -654,3 +674,17 @@ class GtdbCommonLpsnHtmlSynonyms(GtdbCommonBase):
     page_id = Column(ForeignKey('lpsn_html.id'), nullable=False)
     synonym_id = Column(ForeignKey('lpsn_html.id'), nullable=False)
     kind = Column(Text, nullable=False)
+
+
+class GtdbCommonSeqCodeHtml(GtdbCommonBase):
+    __tablename__ = 'seqcode_html'
+    id = Column(Integer, primary_key=True)
+    name = Column(Text)
+    rank = Column(Text)
+    domain_id = Column(ForeignKey('seqcode_html.id'), nullable=True)
+    phylum_id = Column(ForeignKey('seqcode_html.id'), nullable=True)
+    class_id = Column(ForeignKey('seqcode_html.id'), nullable=True)
+    order_id = Column(ForeignKey('seqcode_html.id'), nullable=True)
+    family_id = Column(ForeignKey('seqcode_html.id'), nullable=True)
+    genus_id = Column(ForeignKey('seqcode_html.id'), nullable=True)
+    species_id = Column(ForeignKey('seqcode_html.id'), nullable=True)
