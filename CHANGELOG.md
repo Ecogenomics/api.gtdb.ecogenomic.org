@@ -1,3 +1,16 @@
+# [2.17.0](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.16.0...v2.17.0) (2023-04-28)
+
+
+### Bug Fixes
+
+* **R214:** Update API for GTDB R214. ([b999299](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/b999299871704ab670452fdbb6e058da1159ba9e))
+* **R214:** Update API for GTDB R214. ([dd41925](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/dd4192501c02c7d30f61cc9cd5b038a7797c52ce))
+
+
+### Features
+
+* **R214:** Update API for GTDB R214. ([6ffe684](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/6ffe6846e135a6790cb781283fd42ca0d3efd617))
+
 # [2.16.0](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.15.0...v2.16.0) (2023-04-14)
 
 
