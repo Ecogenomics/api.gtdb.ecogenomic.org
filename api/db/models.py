@@ -668,6 +668,7 @@ class GtdbCommonLpsnHtmlChildTaxa(GtdbCommonBase):
     nomenclatural_status = Column(Text, nullable=True)
     taxonomic_status = Column(Text, nullable=True)
 
+
 class GtdbCommonLpsnHtmlSynonyms(GtdbCommonBase):
     __tablename__ = 'lpsn_html_synonyms'
     id = Column(Integer, primary_key=True)
@@ -688,3 +689,89 @@ class GtdbCommonSeqCodeHtml(GtdbCommonBase):
     family_id = Column(ForeignKey('seqcode_html.id'), nullable=True)
     genus_id = Column(ForeignKey('seqcode_html.id'), nullable=True)
     species_id = Column(ForeignKey('seqcode_html.id'), nullable=True)
+
+
+class GtdbCommonNcbiCitation(GtdbCommonBase):
+    __tablename__ = 'ncbi_citation'
+    cit_id = Column(Integer, primary_key=True)
+    cit_key = Column(Text)
+    pubmed_id = Column(Integer)
+    medline_id = Column(Integer)
+    url = Column(Text)
+    content = Column(Text)
+
+
+class GtdbCommonNcbiDivision(GtdbCommonBase):
+    __tablename__ = 'ncbi_division'
+    division_id = Column(Integer, primary_key=True)
+    cde = Column(Text)
+    name = Column(Text)
+    comments = Column(Text)
+
+
+class GtdbCommonNcbiGencode(GtdbCommonBase):
+    __tablename__ = 'ncbi_gencode'
+    gencode_id = Column(Integer, primary_key=True)
+    abbreviation = Column(Text)
+    name = Column(Text)
+    cde = Column(Text)
+    starts = Column(Text)
+
+
+class GtdbCommonNcbiMergedNode(GtdbCommonBase):
+    __tablename__ = 'ncbi_merged_node'
+    old_tax_id = Column(ForeignKey('ncbi_node.tax_id'), primary_key=True)
+    new_tax_id = Column(ForeignKey('ncbi_node.tax_id'), primary_key=True)
+
+
+class GtdbCommonNcbiName(GtdbCommonBase):
+    __tablename__ = 'ncbi_name'
+
+    column_not_exist_in_db = Column(Integer, primary_key=True)
+
+    tax_id = Column(ForeignKey('ncbi_node.tax_id'))
+    name_txt = Column(Text)
+    unique_name = Column(Text)
+    name_class = Column(Text)
+
+
+class GtdbCommonNcbiNode(GtdbCommonBase):
+    __tablename__ = 'ncbi_node'
+    tax_id = Column(Integer, primary_key=True)
+    parent_tax_id = Column(ForeignKey('ncbi_node.tax_id'))
+    rank = Column(Text)
+    embl_code = Column(Text)
+    division_id = Column(ForeignKey('ncbi_division.division_id'))
+    inherited_div_flag = Column(Boolean)
+    gencode_id = Column(ForeignKey('ncbi_gencode.gencode_id'))
+    inherited_gc_flag = Column(Boolean)
+    mito_gencode_id = Column(ForeignKey('ncbi_gencode.gencode_id'))
+    inherited_mgc_flag = Column(Boolean)
+    genbank_hidden = Column(Boolean)
+    hidden_subtree_root = Column(Boolean)
+    comments = Column(Text)
+    is_deleted = Column(Boolean)
+
+
+class GtdbCommonNcbiNodeCitation(GtdbCommonBase):
+    __tablename__ = 'ncbi_node_citation'
+    tax_id = Column(ForeignKey('ncbi_node.tax_id'), primary_key=True)
+    cit_id = Column(ForeignKey('ncbi_citation.cit_id'), primary_key=True)
+
+class GtdbCommonBergeysHtml(GtdbCommonBase):
+    __tablename__ = 'bergeys_html'
+    page_id = Column(Integer, primary_key=True, nullable=False)
+    updated = Column(TIMESTAMP, nullable=False)
+    html = Column(Text, nullable=False)
+
+class GtdbCommonBergeysTaxa(GtdbCommonBase):
+    __tablename__ = 'bergeys_taxa'
+    taxon_id = Column(Integer, primary_key=True, nullable=False)
+    name = Column(Text, nullable=False)
+    url = Column(Text, nullable=False)
+    content = Column(Text)
+
+class GtdbCommonBergeysTaxaChildren(GtdbCommonBase):
+    __tablename__ = 'bergeys_taxa_children'
+    parent_id = Column(ForeignKey('bergeys_taxa.taxon_id'), primary_key=True, nullable=False)
+    child_id = Column(ForeignKey('bergeys_taxa.taxon_id'), primary_key=True, nullable=False)
