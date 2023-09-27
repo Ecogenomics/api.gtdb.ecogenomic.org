@@ -6,7 +6,7 @@ authors = ["Aaron Mussig <aaronmussig@gmail.com>"]
 license = "GPL-3"
 
 [tool.poetry.dependencies]
-python = ">=3.10,<3.11"
+python = ">=3.11,<3.12"
 rq = "^1.13.0"
 redis = "^4.5.3"
 hiredis = "^2.2.2"
