@@ -1,3 +1,10 @@
+## [2.18.1](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.18.0...v2.18.1) (2023-09-28)
+
+
+### Bug Fixes
+
+* **db:** Increase connection pool size due to timeouts. ([7f25d4a](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/7f25d4a6395f6af627b67457792c9e4bfff8f0a5))
+
 # [2.18.0](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.17.0...v2.18.0) (2023-09-28)
 
 
