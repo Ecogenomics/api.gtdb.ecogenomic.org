@@ -11,7 +11,7 @@ GTDB_COMMON_DB_URL = f'postgresql://{POSTGRES_USER}:{POSTGRES_PASS}@{POSTGRES_HO
 gtdb_engine = create_engine(
     GTDB_DB_URL,
     convert_unicode=True,
-    pool_size=5,
+    pool_size=10,
     max_overflow=20,
     pool_recycle=3600
 )
@@ -19,7 +19,7 @@ gtdb_engine = create_engine(
 gtdb_web_engine = create_engine(
     GTDB_WEB_DB_URL,
     convert_unicode=True,
-    pool_size=5,
+    pool_size=10,
     max_overflow=20,
     pool_recycle=3600
 )
@@ -27,7 +27,7 @@ gtdb_web_engine = create_engine(
 gtdb_common_engine = create_engine(
     GTDB_COMMON_DB_URL,
     convert_unicode=True,
-    pool_size=5,
+    pool_size=10,
     max_overflow=20,
     pool_recycle=3600
 )
