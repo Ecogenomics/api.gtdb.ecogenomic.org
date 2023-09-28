@@ -1,5 +1,5 @@
 # https://hub.docker.com/r/nginx/unit
-FROM nginx/unit:1.28.0-python3.10
+FROM unit:1.31.0-python3.11
 
 COPY . /api
 

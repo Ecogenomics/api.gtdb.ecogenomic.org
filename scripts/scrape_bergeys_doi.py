@@ -4,9 +4,8 @@ if __name__ == '__main__':
     load_dotenv()
 
 
-from api.db import GtdbWebSession
-from api.db.models import DbGtdbTree
-
+from api.db import GtdbWebSession, GtdbCommonSession
+from api.db.models import DbGtdbTree, GtdbCommonBergeysHtml
 
 import os
 import re
@@ -36,18 +35,25 @@ for (let i = 0; i < classes.length; i++) {
 
 // Get the next pages (if needed, 4 in total, where title is 2, 3, 4).
 
-const links = document.getElementsByTagName("a");
-
-for (let i = 0; i < links.length; i++) {
-    const curLink = links[i];
-    if (curLink.title === "4") {
-        curLink.click();
+function getLinksForPage(pageNo) {
+    const links = document.getElementsByTagName("a");
+    
+    for (let i = 0; i < links.length; i++) {
+        const curLink = links[i];
+        if (curLink.title === pageNo) {
+            curLink.click();
+        }
     }
 }
 
-Oceanicella
+getLinksForPage("2");
+getLinksForPage("3");
+getLinksForPage("4");
+
 
 """
+
+HTML_DIR = '/tmp/bergeys'
 
 HTML_PATHS = [
     '/Users/aaron/Desktop/bergeys/bergeys_1.html',
@@ -66,22 +72,18 @@ PATH_CACHE = '/Users/aaron/Desktop/bergeys/cache.tsv'
 PATH_R207_BAC = '/Users/aaron/Desktop/bergeys/bac120_taxonomy_r214.tsv'
 PATH_R207_ARC = '/Users/aaron/Desktop/bergeys/ar53_taxonomy_r214.tsv'
 
-def parse_html(path):
-    print(f'Processing: {path}')
-    with open(path) as f:
-        html = f.read()
-    html = html.replace('\n', '')
-    soup = BeautifulSoup(html, 'html.parser')
 
+def parse_html_bergeys(content):
+
+    content = content.replace('\n', '')
+    soup = BeautifulSoup(content, 'html.parser')
     tree_titles = list(soup.find_all(class_='accordion__control--text'))
-
     links = list(soup.find_all(class_='item__body'))
-
     del soup
 
     # Get the heading names for each depth
     d_heading_level_to_name = dict()
-    for item in tqdm(tree_titles):
+    for item in tree_titles:
         item_title = item.text.strip()
         item_id = item.parent.attrs['aria-controls']
         assert (item_id.startswith('heading-level'))
@@ -89,7 +91,8 @@ def parse_html(path):
 
     # Get the links
     link_results = list()
-    for link in tqdm(links):
+    out = dict()
+    for link in links:
 
         titles = link.find_all(class_='visitable')
         assert (len(titles) == 1)
@@ -98,6 +101,16 @@ def parse_html(path):
         title_str = title.text.strip()
         title_url = title.attrs['href']
         title_parents = list()
+
+        meta_info = link.find_all(class_='meta__info')
+        assert (len(meta_info) == 1)
+        meta_info = meta_info[0]
+        meta_ul = meta_info.find_all(name='ul')
+        assert (len(meta_ul) == 2)
+        meta_content = meta_ul[0]
+        meta_content = meta_content.text.strip()
+        if meta_content.endswith(','):
+            meta_content = meta_content[:-1]
 
         cur_node = link
         while True:
@@ -109,15 +122,16 @@ def parse_html(path):
 
             cur_node = cur_node.parent
 
-        title_parents = [d_heading_level_to_name[x] for x in reversed(title_parents)]
+        title_parents = [x for x in reversed(title_parents)]
 
         link_results.append((
             title_str,
             title_url,
             tuple(title_parents),
+            meta_content
         ))
 
-    return set(link_results)
+    return d_heading_level_to_name, set(link_results)
 
 
 def read_gtdb_tree_table() -> Dict[str, Dict[str, Tuple[int, str]]]:
@@ -161,8 +175,90 @@ def read_taxonomy_files():
     return out
 
 
+def insert_html_into_database():
+    print('Inserting HTML into database')
+
+    files = [x for x in os.listdir(HTML_DIR) if x.endswith('html')]
+    db = GtdbCommonSession()
+    for file_id, file in enumerate(sorted(files)):
+        with open(os.path.join(HTML_DIR, file)) as f:
+            html = f.read()
+        stmt = sa.insert(GtdbCommonBergeysHtml).values(page_id=file_id, html=html)
+        db.execute(stmt)
+    db.commit()
+    return
+
+def get_html_from_db():
+    print('Loading HTML from database')
+    db = GtdbCommonSession()
+    query = sa.select([GtdbCommonBergeysHtml.html])
+    results = db.execute(query).fetchall()
+    if len(results) == 0:
+        raise Exception(f'No HTML found in database')
+    out = list()
+    for row in results:
+        out.append(row.html)
+    return out
+
+def parse_bergeys_html():
+    bergeys_html = get_html_from_db()
+
+    print('Parsing HTML content')
+    all_content = set()
+    d_heading_to_name = dict()
+    for html_content in tqdm(bergeys_html):
+        cur_heading_to_name, cur_content = parse_html_bergeys(html_content)
+        all_content.update(cur_content)
+        d_heading_to_name = {**d_heading_to_name, **cur_heading_to_name}
+        break
+
+    all_keys = set()
+    d_heading_to_children = defaultdict(set)
+    for name, _, parents, _ in all_content:
+        all_keys.add(f'{parents[-1]}-{name}')
+        d_heading_to_children[parents[-1]].add(name)
+    d_heading_to_id = {k: i for i, k in enumerate(sorted(all_keys, key=lambda x: (len(x.split('heading-level')), x)))}
+
+    print('Creating rows for insert')
+    taxa_rows = list()
+    child_rows = list()
+    for name, url, parents, content in all_content:
+        name_key = f'{parents[-1]}-{name}'
+        name_id = d_heading_to_id[name_key]
+
+        if len(parents) > 1:
+            parent_key = d_heading_to_name[parents[-1]]
+            parent_id = d_heading_to_id[f'{parents[-1]}-{parent_key}']
+            child_rows.append({
+                    'parent_id': parent_id,
+                    'child_id': name_id
+                })
+
+        taxa_rows.append({
+            'taxon_id': name_id,
+            'name': name,
+            'url': url,
+            'content': content
+        })
+    db = GtdbCommonSession()
+
+
+    return
+
+
+
 def main():
+
+    # insert_html_into_database()
+    parse_bergeys_html()
+
+    return
+
+
+
+
     # Parse the output from the GTDB tree table
+
 
     print('Reading taxonomy files')
     d_taxon_to_parents = read_taxonomy_files()
