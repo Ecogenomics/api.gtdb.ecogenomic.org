@@ -1,3 +1,10 @@
+## [2.18.2](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.18.1...v2.18.2) (2023-12-10)
+
+
+### Bug Fixes
+
+* **db:** Increase connection pool size. ([d710ee3](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/d710ee384428566d751170d2c6646b06f29313b8))
+
 ## [2.18.1](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.18.0...v2.18.1) (2023-09-28)
 
 
