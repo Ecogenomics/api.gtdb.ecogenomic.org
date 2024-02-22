@@ -1,3 +1,10 @@
+## [2.18.3](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.18.2...v2.18.3) (2024-02-22)
+
+
+### Bug Fixes
+
+* **status:** Scale database time to milliseconds. ([03bb1a4](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/03bb1a40aa3d850e0a0c026d01d0a4d689162c9f))
+
 ## [2.18.2](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.18.1...v2.18.2) (2023-12-10)
 
 
