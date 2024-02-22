@@ -12,7 +12,7 @@ RUN apt update -y -m && \
 
 # Copy across the application, setup NGINX, and install Poetry
 COPY . /api
-RUN cp /api/docker/api/config.json /docker-entrypoint.d/config.json && \
+RUN cp /api/docker/config.json /docker-entrypoint.d/config.json && \
     pip install poetry
 
 # Set the working directory and configure Poetry
