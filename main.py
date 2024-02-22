@@ -130,7 +130,7 @@ async def send_request_to_plausible(request: Request):
             print('Running local - skipping analytics.')
             return
 
-        url = 'https://plausible.gtdb.ecogenomic.org/api/event'
+        url = 'https://gtdb-stats.ecogenomic.org/api/event'
         user_agent = request.headers.get('user-agent')
         x_forwarded_for = request.headers.get('x-forwarded-for')
 
