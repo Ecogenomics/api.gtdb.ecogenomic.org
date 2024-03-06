@@ -73,9 +73,12 @@ FASTANI_Q_PRIORITY = os.environ.get('FASTANI_Q_PRIORITY', 'website-fastani-prior
 FASTANI_Q_NORMAL = os.environ.get('FASTANI_Q_NORMAL', 'website-fastani-normal')
 FASTANI_Q_LOW = os.environ.get('FASTANI_Q_LOW', 'website-fastani-low')
 
+FASTANI_DB_USER = os.environ.get('FASTANI_DB_USER')
+FASTANI_DB_PASS = os.environ.get('FASTANI_DB_PASS')
+FASTANI_DB_NAME = os.environ.get('FASTANI_DB_NAME')
+
 # Maximum number of pairwise comparisons in a single job
 FASTANI_MAX_PAIRWISE = 1000
-FASTANI_MAX_PAIRWISE_LOW = 5000
 
 # Maximum runtime before job is marked as failed (seconds)
 FASTANI_JOB_TIMEOUT = '10m'
@@ -94,3 +97,4 @@ FASTANI_GENOME_DIR = os.environ.get('FASTANI_GENOME_DIR')
 
 # GTDB releases
 GTDB_RELEASES = ('R80', 'R83', 'R86.2', 'R89', 'R95', 'R202', 'R207', 'R214', 'NCBI')
+

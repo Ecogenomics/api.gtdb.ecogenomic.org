@@ -4,7 +4,7 @@ from sqlalchemy.dialects.postgresql import DOUBLE_PRECISION, BIGINT
 from sqlalchemy.dialects.postgresql import JSON, TIMESTAMP
 from sqlalchemy.orm import relationship
 
-from api.db import GtdbBase, GtdbWebBase, GtdbCommonBase
+from api.db import GtdbBase, GtdbWebBase, GtdbCommonBase, GtdbFastaniBase
 
 
 class GenomeSource(GtdbBase):  # OK
@@ -758,11 +758,13 @@ class GtdbCommonNcbiNodeCitation(GtdbCommonBase):
     tax_id = Column(ForeignKey('ncbi_node.tax_id'), primary_key=True)
     cit_id = Column(ForeignKey('ncbi_citation.cit_id'), primary_key=True)
 
+
 class GtdbCommonBergeysHtml(GtdbCommonBase):
     __tablename__ = 'bergeys_html'
     page_id = Column(Integer, primary_key=True, nullable=False)
     updated = Column(TIMESTAMP, nullable=False)
     html = Column(Text, nullable=False)
+
 
 class GtdbCommonBergeysTaxa(GtdbCommonBase):
     __tablename__ = 'bergeys_taxa'
@@ -771,7 +773,78 @@ class GtdbCommonBergeysTaxa(GtdbCommonBase):
     url = Column(Text, nullable=False)
     content = Column(Text)
 
+
 class GtdbCommonBergeysTaxaChildren(GtdbCommonBase):
     __tablename__ = 'bergeys_taxa_children'
     parent_id = Column(ForeignKey('bergeys_taxa.taxon_id'), primary_key=True, nullable=False)
     child_id = Column(ForeignKey('bergeys_taxa.taxon_id'), primary_key=True, nullable=False)
+
+
+class GtdbFastaniGenome(GtdbFastaniBase):
+    __tablename__ = 'genome'
+    id = Column(Integer, primary_key=True)
+    name = Column(CHAR(15), nullable=False)
+    fna_gz_md5 = Column(CHAR(32), nullable=False)
+    assembly_url = Column(Text, nullable=True)
+
+
+class GtdbFastaniJob(GtdbFastaniBase):
+    __tablename__ = 'job'
+    id = Column(Integer, primary_key=True)
+    created = Column(TIMESTAMP, nullable=False)
+    email = Column(Text, nullable=True)
+    param_id = Column(ForeignKey('param.id'), nullable=False)
+
+
+class GtdbFastaniJobResult(GtdbFastaniBase):
+    __tablename__ = 'job_result'
+    job_id = Column(ForeignKey('job.id'), primary_key=True, nullable=False)
+    result_id = Column(ForeignKey('result.id'), primary_key=True, nullable=False)
+
+
+class GtdbFastaniParam(GtdbFastaniBase):
+    __tablename__ = 'param'
+    id = Column(Integer, primary_key=True)
+    version = Column(ForeignKey('version.id'), primary_key=False, nullable=False)
+    frag_len = Column(Integer, nullable=False)
+    kmer_size = Column(Integer, nullable=False)
+    min_align_frac = Column(Float, nullable=True)
+    min_align_frag = Column(Integer, nullable=True)
+
+
+class GtdbFastaniQueue(GtdbFastaniBase):
+    __tablename__ = 'queue'
+    result_id = Column(ForeignKey('result.id'), primary_key=True, nullable=False)
+    start_time = Column(TIMESTAMP, nullable=False)
+
+
+class GtdbFastaniResult(GtdbFastaniBase):
+    __tablename__ = 'result'
+    id = Column(Integer, primary_key=True)
+    qry_id = Column(ForeignKey('genome.id'), primary_key=False, nullable=False)
+    ref_id = Column(ForeignKey('genome.id'), primary_key=False, nullable=False)
+    param_id = Column(ForeignKey('param.id'), primary_key=False, nullable=False)
+    ani = Column(Float, nullable=True)
+    mapped_frag = Column(Integer, nullable=True)
+    total_frag = Column(Integer, nullable=True)
+    stdout = Column(Text, nullable=True)
+    completed = Column(Boolean, nullable=False)
+    priority = Column(Integer, nullable=False)
+    error = Column(Boolean, nullable=False)
+
+class GtdbFastaniVersion(GtdbFastaniBase):
+    __tablename__ = 'version'
+    id = Column(Integer, primary_key=True)
+    name = Column(Text, nullable=False)
+
+
+class GtdbFastaniJobQuery(GtdbFastaniBase):
+    __tablename__ = 'job_query'
+    job_id = Column(ForeignKey('job.id'), primary_key=True, nullable=False)
+    genome_id = Column(ForeignKey('genome.id'), primary_key=True, nullable=False)
+
+class GtdbFastaniJobReference(GtdbFastaniBase):
+    __tablename__ = 'job_reference'
+    job_id = Column(ForeignKey('job.id'), primary_key=True, nullable=False)
+    genome_id = Column(ForeignKey('genome.id'), primary_key=True, nullable=False)
+

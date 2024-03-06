@@ -123,9 +123,9 @@ async def send_request_to_plausible(request: Request):
     #
     try:
         if ENV_NAME is Env.PROD:
-            domain = 'api.gtdb.ecogenomic.org'
+            domain = 'gtdb-api.ecogenomic.org'
         elif ENV_NAME is Env.DEV:
-            domain = 'api.gtdb-dev.ecogenomic.org'
+            domain = 'gtdb-api-dev.ecogenomic.org'
         else:
             print('Running local - skipping analytics.')
             return

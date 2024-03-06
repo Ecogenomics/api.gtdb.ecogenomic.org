@@ -1,64 +1,173 @@
-import asyncio
+import os
 import os
 import subprocess
 import tempfile
 from collections import defaultdict
 from functools import cmp_to_key
-from typing import List
+from typing import List, Set
 from typing import Tuple, Optional, Union, Dict, Collection, Literal
 
 import numpy as np
 import sqlalchemy as sa
 from redis import Redis
 from rq import Queue, get_current_job
-from rq.exceptions import NoSuchJobError
 from rq.job import Job, JobStatus
 from rq.queue import EnqueueData
+from sqlalchemy import sql
 from sqlalchemy.orm import Session
 
-from api.config import REDIS_HOST, REDIS_PASS, FASTANI_MAX_PAIRWISE, \
-    FASTANI_Q_NORMAL, FASTANI_Q_PRIORITY, FASTANI_PRIORITY_SECRET, FASTANI_BIN, FASTANI_JOB_TIMEOUT, \
-    FASTANI_JOB_RESULT_TTL, FASTANI_JOB_FAIL_TTL, FASTANI_JOB_RETRY, FASTANI_GENOME_DIR, FASTANI_Q_LOW, \
-    FASTANI_MAX_PAIRWISE_LOW
-from api.db.models import MetadataTaxonomy, Genome, GtdbCommonGenomes
+from api.config import FASTANI_MAX_PAIRWISE, \
+    FASTANI_PRIORITY_SECRET, FASTANI_BIN, FASTANI_JOB_TIMEOUT, \
+    FASTANI_JOB_RESULT_TTL, FASTANI_JOB_FAIL_TTL, FASTANI_JOB_RETRY, FASTANI_GENOME_DIR
+from api.db.models import MetadataTaxonomy, Genome, GtdbFastaniGenome, GtdbFastaniResult, GtdbFastaniJob, MetadataNcbi, \
+    GtdbFastaniParam, GtdbFastaniVersion, GtdbFastaniJobQuery, GtdbFastaniJobReference
 from api.exceptions import HttpBadRequest, HttpNotFound, HttpInternalServerError
 from api.model.fastani import FastAniJobResult, FastAniParameters, FastAniResult, FastAniJobRequest, FastAniConfig, \
     FastAniResultData, FastAniJobHeatmap, FastAniJobHeatmapData, FastAniHeatmapDataStatus, FastAniJobInfo, \
-    FastAniJobStatus
+    FastAniJobStatus, FastAniGenomeValidationRequest, FastAniGenomeValidationResponse, FastAniJobMetadata
 from api.util.collection import x_prod, deduplicate
 from api.util.common import is_valid_email
-from api.util.email import send_smtp_email
 from api.util.matrix import cluster_matrix
 from api.util.ncbi import is_ncbi_accession
 
 
 def get_fastani_config() -> FastAniConfig:
-    return FastAniConfig(maxPairwise=FASTANI_MAX_PAIRWISE, maxPairwiseLow=FASTANI_MAX_PAIRWISE_LOW)
+    return FastAniConfig(maxPairwise=FASTANI_MAX_PAIRWISE)
 
 
-def get_fastani_job_progress(job_id: str, n_rows: Optional[int] = None, page: Optional[int] = None,
-                             sort_by: Optional[List[str]] = None,
-                             sort_desc: Optional[List[bool]] = None) -> FastAniJobResult:
+def get_job_query_gids(job_id: int, db: Session) -> List[str]:
+    query = sql.text("""
+        SELECT g.name
+        FROM job_query jq
+        INNER JOIN genome g ON g.id = jq.genome_id
+        WHERE jq.job_id = :job_id
+        ORDER BY g.name;
+    """)
+    result = db.execute(query, {'job_id': job_id}).fetchall()
+    return [x.name for x in result]
+
+
+def get_job_reference_gids(job_id, db: Session):
+    query = sql.text("""
+        SELECT g.name
+        FROM job_reference jr
+        INNER JOIN genome g ON g.id = jr.genome_id
+        WHERE jr.job_id = :job_id
+        ORDER BY g.name;
+    """)
+    result = db.execute(query, {'job_id': job_id}).fetchall()
+    return [x.name for x in result]
+
+
+def get_fastani_job_metadata(job_id: int, db: Session):
+    query = sql.text("""
+        select j.created, v.name, p.frag_len, p.kmer_size, p.min_align_frac, p.min_align_frag
+        from job j
+        INNER JOIN param p ON p.id = j.param_id
+        INNER JOIN version v ON v.id = p.version
+        WHERE j.id= :job_id;
+    """)
+    result = db.execute(query, {'job_id': job_id}).fetchone()
+    if result is None:
+        raise HttpNotFound("No such job.")
+    dt_created = result.created
+    params = FastAniParameters(
+        version=result.name,
+        frag_len=result.frag_len,
+        kmer=result.kmer_size,
+        min_frac=result.min_align_frac,
+        min_frag=result.min_align_frag
+    )
+
+    return dt_created, params
+
+
+def get_fastani_job_results(job_id: int, db: Session):
+    query = sql.text("""
+            SELECT
+            gq.name AS q_name,
+            gr.name AS r_name,
+            r.ani,
+            r.mapped_frag,
+            r.total_frag,
+            r.stdout,
+            r.completed,
+            r.error
+        FROM job_result jr
+                 INNER JOIN result r ON r.id = jr.result_id
+                 INNER JOIN genome gq ON gq.id = r.qry_id
+                 INNER JOIN genome gr ON gr.id = r.ref_id
+        WHERE jr.job_id = :job_id
+    """)
+    results = db.execute(query, {'job_id': job_id}).fetchall()
+
+    out = list()
+    for row in results:
+
+        # Check the state of the job
+        if row.error:
+            status = JobStatus.FAILED
+        else:
+            if row.completed:
+                status = JobStatus.FINISHED
+            else:
+                status = JobStatus.QUEUED
+
+        # Compute the AF
+        if row.mapped_frag is not None and row.total_frag is not None:
+            af = round(row.mapped_frag / row.total_frag, 4)
+        else:
+            af = None
+
+        cur_data = FastAniResultData(
+            ani=row.ani,
+            af=af,
+            mapped=row.mapped_frag,
+            total=row.total_frag,
+            status=status,
+            stdout=row.stdout,
+            stderr=None,
+            cmd=None
+        )
+        out.append(FastAniResult(
+            query=row.q_name,
+            reference=row.r_name,
+            data=cur_data
+        ))
+
+    return out
+
+
+def get_fastani_job_progress(
+        job_id: int,
+        n_rows: Optional[int],
+        page: Optional[int],
+        sort_by: Optional[List[str]],
+        sort_desc: Optional[List[bool]],
+        db: Session
+) -> FastAniJobResult:
     """Returns the progress of a FastANI job."""
-    with Redis(host=REDIS_HOST, password=REDIS_PASS) as conn:
-        try:
-            job = Job.fetch(job_id, connection=conn)
-            group_1, group_2 = job.meta.get('group_1'), job.meta.get('group_2')
-            job_position = get_current_job_queue_position(job, conn)
-            return FastAniJobResult(job_id=job_id,
-                                    group_1=group_1,
-                                    group_2=group_2,
-                                    parameters=FastAniParameters.parse_raw(job.meta.get('parameters')),
-                                    results=get_fastani_results_from_job(job, n_rows, page, sort_by, sort_desc),
-                                    positionInQueue=job_position)
-        except NoSuchJobError:
-            raise HttpNotFound(f"No such job id: '{job_id}'")
+
+    # Query the database for the query jobs
+    query_gids = get_job_query_gids(job_id, db)
+    reference_gids = get_job_reference_gids(job_id, db)
+    dt_created, params = get_fastani_job_metadata(job_id, db)
+    results = get_fastani_job_results(job_id, db)
+
+    return FastAniJobResult(
+        job_id=job_id,
+        group_1=query_gids,
+        group_2=reference_gids,
+        parameters=params,
+        results=results,
+        positionInQueue=None
+    )
     raise HttpInternalServerError('Unable to fetch job')
 
 
-def fastani_job_to_rows(job_id: str):
+def fastani_job_to_rows(job_id: int, db: Session):
     """Retrieves a FastANI job from the database and converts it to rows."""
-    job = get_fastani_job_progress(job_id)
+    job = get_fastani_job_progress(job_id, None, None, None, None, db)
 
     out = [
         ('job_id', job.job_id),
@@ -116,16 +225,19 @@ def fastani_job_to_rows(job_id: str):
 def validate_genomes(group_a: List[str], group_b: List[str]):
     """Runs two collections of genomes to ensure they're valid."""
     n_pairwise = len(group_a) * len(group_b)
-    # if n_pairwise > FASTANI_MAX_PAIRWISE:
-    #     raise HttpBadRequest(f'Too many pairwise comparisons: {n_pairwise:,} > '
-    #                          f'{FASTANI_MAX_PAIRWISE:,}')
+    if n_pairwise > FASTANI_MAX_PAIRWISE:
+        raise HttpBadRequest(f'Too many pairwise comparisons: {n_pairwise:,} > '
+                             f'{FASTANI_MAX_PAIRWISE:,}')
     if n_pairwise == 0:
         raise HttpBadRequest('No pairwise comparisons requested')
 
     # Validate each of the accessions
+    invalid_accessions = set()
     for accession in group_a + group_b:
         if not is_ncbi_accession(accession):
-            raise HttpBadRequest('One or more accessions are invalid')
+            invalid_accessions.add(accession)
+    if len(invalid_accessions) > 0:
+        raise HttpBadRequest(f'One or more accessions are invalid: {invalid_accessions}')
 
 
 def get_unique_job_ids(group_a: List[str], group_b: List[str],
@@ -158,100 +270,124 @@ def prepare_fastani_single_job(gid_a: str, gid_b: str, job_id: str, params: Fast
                               failure_ttl=FASTANI_JOB_FAIL_TTL, retry=FASTANI_JOB_RETRY)
 
 
+def get_or_set_db_param_id(db: Session, params: FastAniParameters) -> int:
+    query = sql.text(
+        """
+        SELECT * FROM getOrSetFastAniParamId(
+            CAST(:version AS TEXT), 
+            CAST(:frag_len AS INTEGER),
+            CAST(:kmer AS SMALLINT),
+            CAST(:min_frac AS DOUBLE PRECISION), 
+            CAST(:min_frag AS INTEGER)
+        );
+        """
+    )
+    parameters = {
+        'frag_len': params.frag_len,
+        'kmer': params.kmer,
+        'version': params.version,
+        'min_frac': params.min_frac,
+        'min_frag': params.min_frag
+    }
+    result = db.execute(query, parameters).fetchone()
+
+    if result is None or len(result) == 0 or result[0] is None:
+        raise HttpBadRequest("Unable to retrieve or set the FastANI parameters.")
+    return int(result[0])
+
+
+def associate_results_with_job(db: Session, email: Optional[str], param_id, result_ids, qry_genomes, ref_genomes):
+    # Create the job id
+    job_query = sa.insert(GtdbFastaniJob).values(email=email, param_id=param_id)
+    job_id = db.execute(job_query).inserted_primary_key[0]
+    db.commit()
+
+    # Associate the query and reference genomes with this job id
+    job_qry_rows_to_insert = [{'job_id': job_id, 'genome_id': x} for x in qry_genomes]
+    job_qry_query = "INSERT INTO job_query (job_id, genome_id) VALUES (:job_id, :genome_id);"
+    db.execute(job_qry_query, job_qry_rows_to_insert)
+    db.commit()
+
+    job_ref_rows_to_insert = [{'job_id': job_id, 'genome_id': x} for x in ref_genomes]
+    job_ref_query = "INSERT INTO job_reference (job_id, genome_id) VALUES (:job_id, :genome_id);"
+    db.execute(job_ref_query, job_ref_rows_to_insert)
+    db.commit()
+
+    # Associate the result ids with this job id
+    job_result_rows_to_insert = [{'job_id': job_id, 'result_id': x} for x in result_ids]
+    job_result_query = "INSERT INTO job_result (job_id, result_id) VALUES (:job_id, :result_id);"
+    db.execute(job_result_query, job_result_rows_to_insert)
+    db.commit()
+
+    return job_id
+
+
 def enqueue_fastani(request: FastAniJobRequest, db: Session) -> FastAniJobResult:
     """Enqueue FastANI jobs and return a unique ID to the user."""
 
+    """
+    Perform validation on input arguments
+    """
+
+    # Nullify either the alignment fraction/fragment based on the version
+    if request.parameters.version in {'1.0', '1.1', '1.2'}:
+        request.parameters.min_frac = None
+    else:
+        request.parameters.min_frag = None
+    if request.parameters.min_frac is None and request.parameters.min_frag is None:
+        raise HttpBadRequest('Either min_frac or min_frag must be provided.')
+
     # Validate e-mail address is valid if provided
-    if request.email:
+    if request.email and len(request.email) > 3:
         if not is_valid_email(request.email):
             raise HttpBadRequest('Invalid e-mail address')
+    else:
+        request.email = None
 
-    # Extract variables
+    """
+    Extract variables
+    """
+
     is_priority = request.priority == FASTANI_PRIORITY_SECRET
     q_genomes, r_genomes = deduplicate(request.query), deduplicate(request.reference)
 
-    # Validation
+    # Error if too many pairwise comparisons, no comparisons, invalid NCBI accessions
     validate_genomes(q_genomes, r_genomes)
 
-    # Subset the genomes to those that are in the database
+    # Subset the genomes to those that are in the database, and get the database ID
     all_genomes = set(q_genomes).union(set(r_genomes))
-    query = sa.select([GtdbCommonGenomes.name]).where(GtdbCommonGenomes.name.in_(all_genomes))
+    query = sa.select([GtdbFastaniGenome.id, GtdbFastaniGenome.name]).where(GtdbFastaniGenome.name.in_(all_genomes))
     results = db.execute(query).fetchall()
-    genomes_in_db = {x.name for x in results}
+    genomes_in_db = {x.name: x.id for x in results}
     q_genomes = [x for x in q_genomes if x in genomes_in_db]
     r_genomes = [x for x in r_genomes if x in genomes_in_db]
 
+    qry_genomes = {x: genomes_in_db[x] for x in q_genomes if x in genomes_in_db}
+    ref_genomes = {x: genomes_in_db[x] for x in r_genomes if x in genomes_in_db}
+    qry_genomes_ids = frozenset(qry_genomes.values())
+    ref_genomes_ids = frozenset(ref_genomes.values())
+
     # Validate that there are still results
-    if len(q_genomes) == 0 or len(r_genomes) == 0:
+    if len(qry_genomes) == 0 or len(r_genomes) == 0:
         raise HttpBadRequest('No comparisons could be made as one or more genomes were not found in the database.')
 
-    # Generate all unique FastANI job ids
-    unique_ids = get_unique_job_ids(q_genomes, r_genomes, request.parameters)
+    # Create or retrieve the ID corresponding to the job parameters chosen
+    param_id = get_or_set_db_param_id(db, request.parameters)
 
-    # Set the target queue
-    n_pairwise = len(q_genomes) * len(r_genomes)
-    if n_pairwise > FASTANI_MAX_PAIRWISE_LOW:
-        raise HttpBadRequest(f'Too many pairwise comparisons: {n_pairwise:,} > {FASTANI_MAX_PAIRWISE_LOW:,}')
-    elif n_pairwise > FASTANI_MAX_PAIRWISE:
-        target_queue = FASTANI_Q_LOW
-    else:
-        target_queue = FASTANI_Q_PRIORITY if is_priority else FASTANI_Q_NORMAL
+    # Create records for each of these jobs in the result table
+    d_qry_ref_ids = get_result_ids_for_gid_params(param_id, qry_genomes_ids, ref_genomes_ids, db)
+    result_ids = set(d_qry_ref_ids.values())
 
-    # Create the job
-    with Redis(host=REDIS_HOST, password=REDIS_PASS) as conn:
-        q = Queue(target_queue, connection=conn)
+    # Create the job itself and associate the result ids with it
+    job_id = associate_results_with_job(db, request.email, param_id, result_ids, qry_genomes_ids, ref_genomes_ids)
 
-        # Check if any Jobs already exist
-        existing_jobs = get_existing_jobs(unique_ids.keys(), conn)
-
-        # Create each of the individual FastANI comparison jobs
-        prev_jobs: List[Job] = list()
-        to_enqueue: List[EnqueueData] = list()
-        for job_id, (gid_a, gid_b) in unique_ids.items():
-
-            # Was there an existing job with the same id?
-            existing_job = existing_jobs.get(job_id)
-
-            # The job does not exist, so we must create it
-            if existing_job is None:
-                to_enqueue.append(prepare_fastani_single_job(gid_a, gid_b, job_id, request.parameters))
-
-            # The job exists, and can be re-used (running, or finished)
-            elif can_use_previous_job(existing_job):
-                prev_jobs.append(existing_job)
-
-            # The job exists, but has failed, retry it
-            else:
-                prev_jobs.append(existing_job.requeue())
-
-        # Bulk enqueue those which need to be created
-        prev_jobs.extend(q.enqueue_many(to_enqueue))
-
-        # Create the main job that will wait for all the individual jobs
-        job = q.enqueue(
-            print,
-            args=(),
-            depends_on=prev_jobs,
-            meta={
-                'parameters': request.parameters.json(),
-                'group_1': q_genomes,
-                'group_2': r_genomes,
-                'email': request.email,
-            },
-            timeout=FASTANI_JOB_TIMEOUT,
-            result_ttl=FASTANI_JOB_RESULT_TTL,
-            failure_ttl=FASTANI_JOB_FAIL_TTL,
-            retry=FASTANI_JOB_RETRY,
-            on_success=report_fastani_job_success,
-            on_failure=report_fastani_job_failure,
-        )
-
-        return FastAniJobResult(job_id=job.get_id(),
-                                group_1=q_genomes,
-                                group_2=r_genomes,
-                                parameters=request.parameters,
-                                results=[],
-                                positionInQueue=q.get_job_position(job))
+    # Return the payload
+    return FastAniJobResult(job_id=job_id,
+                            group_1=q_genomes,
+                            group_2=r_genomes,
+                            parameters=request.parameters,
+                            results=[],
+                            positionInQueue=None)
 
 
 def get_fastani_results_from_job(job: Job, n_rows: Optional[int] = None, page: Optional[int] = None,
@@ -350,9 +486,10 @@ def ncbi_accession_to_path(accession: str, root_dir: str = FASTANI_GENOME_DIR) -
                         accession[7:10], accession[10:13], f'{accession}.fna.gz')
 
 
-def run_fastani(q_path: str, r_path: str, kmer: int, frag_len: int, min_frag: int,
-                min_frac: float, version: str) -> Union[Tuple[Optional[float], int, int],
-Tuple[None, None, None]]:
+def run_fastani(
+        q_path: str, r_path: str, kmer: int, frag_len: int, min_frag: int,
+        min_frac: float, version: str
+) -> Union[Tuple[Optional[float], int, int], Tuple[None, None, None]]:
     """Runs an individual instance of FastANI."""
 
     # Load the current rq job context to save the metadata to
@@ -442,8 +579,11 @@ def _format_job_status(data: Optional[FastAniResultData]) -> FastAniHeatmapDataS
     return FastAniHeatmapDataStatus.ERROR
 
 
-def fastani_heatmap(job_id: str, method: Literal['ani', 'af'], db: Session):
-    jobs = get_fastani_job_progress(job_id)
+def fastani_heatmap(job_id: int, method: Literal['ani', 'af'], db_gtdb: Session, db_fastani: Session):
+    # Retrieve the job information
+    if job_id is None or job_id <= 0:
+        return HttpNotFound('No such job.')
+    jobs = get_fastani_job_progress(job_id, None, None, None, None, db=db_fastani)
 
     # Index the labels
     set_group_1 = frozenset(jobs.group_1)
@@ -459,7 +599,7 @@ def fastani_heatmap(job_id: str, method: Literal['ani', 'af'], db: Session):
         where(Genome.id_at_source.in_(set_group_1 | set_group_2))
     gid_to_species = dict()
     gid_is_sp_rep = set()
-    for row in db.execute(query):
+    for row in db_gtdb.execute(query):
         gid_to_species[row.id_at_source] = row.gtdb_species
         if row.gtdb_representative:
             gid_is_sp_rep.add(row.id_at_source)
@@ -533,103 +673,292 @@ def fastani_heatmap(job_id: str, method: Literal['ani', 'af'], db: Session):
     )
 
 
-def report_fastani_job_success(job, connection, result, *args, **kwargs):
-    email = job.meta.get('email')
-    if email is None:
-        return
-    email = email.strip()
+def get_fastani_job_info(job_id: int, db: Session) -> FastAniJobInfo:
+    query = sql.text("""
+        SELECT j.created,
+               agg.completed,
+               agg.error,
+               agg.count
+        FROM job j
+                 INNER JOIN (SELECT jr.job_id,
+                                    r.completed,
+                                    r.error,
+                                    COUNT(*)
+                             FROM job_result jr
+                                      INNER JOIN result r ON r.id = jr.result_id
+                             WHERE jr.job_id = :job_id
+                             GROUP BY jr.job_id, r.completed, r.error) agg ON agg.job_id = j.id
+        WHERE j.id = :job_id
+    """)
+    rows = db.execute(query, {'job_id': job_id}).fetchall()
+    if rows is None or len(rows) == 0:
+        raise HttpNotFound(f"No such job id: '{job_id}'")
 
-    try:
-        asyncio.run(send_smtp_email(
-            to=[email],
-            content=f'The FastANI job has completed, view the results here:\n\nhttps://gtdb.ecogenomic.org/tools/fastani?job-id={job.get_id()}',
-            subject='[GTDB] FastANI job completed'
-        ))
-    except Exception as e:
-        print(f'Unable to send e-mail: {e}')
-
-
-def report_fastani_job_failure(job, connection, type, value, traceback):
-    email = job.meta.get('email')
-    if email is None:
-        return
-    email = email.strip()
-
-    try:
-        asyncio.run(send_smtp_email(
-            to=[email],
-            content=f'The FastANI job has completed, view the results here:\n\n'
-                    f'https://gtdb.ecogenomic.org/tools/fastani?job-id={job.get_id()}\n\n'
-                    f'Note that one or more of the jobs failed, likely a specific accession does not exist.',
-            subject='[GTDB] FastANI job completed'
-        ))
-    except Exception as e:
-        print(f'Unable to send e-mail: {e}')
-
-
-def get_current_job_queue_position(job: Job, conn) -> Optional[int]:
-    return None  # TODO
-
-    # Jobs that are currently waiting on depdenencies will be in the deferred queue
-    if not job.is_deferred:
-        return None
-
-    # Get the current position of this job in the origin deferred queue
-    cur_pos = conn.zrank(f'rq:deferred:{job.origin}', job.id)
-    if cur_pos is None:
-        return None
-
-    previous_job_ids = set()
-
-    # If this is not the first item in the current queue, then take all jobs before this job
-    if cur_pos > 0:
-        previous_job_ids.update(conn.zrange(f'rq:deferred:{job.origin}', 0, cur_pos - 1))
-
-    # Additionally, take all jobs from the higher priority queues
-    if job.origin == FASTANI_Q_LOW:
-        previous_job_ids.update(conn.zrange(f'rq:deferred:{FASTANI_Q_NORMAL}', 0, -1))
-
-    if job.origin == FASTANI_Q_LOW:
-        prev_low_jobs = conn.zrange(f'rq:deferred:{job.origin}', 0, cur_pos - 1)
-    elif job.origin == FASTANI_Q_NORMAL:
-        prev_norm_jobs = conn.zrange(f'rq:deferred:{FASTANI_Q_LOW}', 0, -1)
-
-    # Get all jobs before this job in the queue, additionally make sure they're valid
-
-
-def get_fastani_job_info(job_id: str) -> FastAniJobInfo:
-    with Redis(host=REDIS_HOST, password=REDIS_PASS) as conn:
-        try:
-            job = Job.fetch(job_id, connection=conn)
-
-            # Check to see if the dependencies of the job are completed
-            if job.is_deferred or job.is_started:
-                status = FastAniJobStatus.RUNNING
-
-                all_finished = True
-                for job_dependency in job.fetch_dependencies():
-                    if job_dependency.is_failed:
-                        status = FastAniJobStatus.ERROR
-                        break
-                    all_finished = all_finished and job_dependency.is_finished
-
-                if status is not FastAniJobStatus.ERROR:
-                    if all_finished:
-                        status = FastAniJobStatus.FINISHED
-                    else:
-                        status = FastAniJobStatus.RUNNING
-            elif job.is_queued:
-                status = FastAniJobStatus.QUEUED
-            elif job.is_finished:
+    if len(rows) == 1:
+        if rows[0].error:
+            status = FastAniJobStatus.ERROR
+        else:
+            if rows[0].completed:
                 status = FastAniJobStatus.FINISHED
             else:
-                status = FastAniJobStatus.ERROR
+                status = FastAniJobStatus.QUEUED
+    else:
+        status = FastAniJobStatus.RUNNING
 
-            return FastAniJobInfo(
-                jobId=job_id,
-                createdOn=job.created_at.timestamp(),
-                status=status,
+    return FastAniJobInfo(
+        jobId=job_id,
+        createdOn=rows[0].created.timestamp(),
+        status=status
+    )
+
+    # with Redis(host=REDIS_HOST, password=REDIS_PASS) as conn:
+    #     try:
+    #         job = Job.fetch(job_id, connection=conn)
+    #
+    #         # Check to see if the dependencies of the job are completed
+    #         if job.is_deferred or job.is_started:
+    #             status = FastAniJobStatus.RUNNING
+    #
+    #             all_finished = True
+    #             for job_dependency in job.fetch_dependencies():
+    #                 if job_dependency.is_failed:
+    #                     status = FastAniJobStatus.ERROR
+    #                     break
+    #                 all_finished = all_finished and job_dependency.is_finished
+    #
+    #             if status is not FastAniJobStatus.ERROR:
+    #                 if all_finished:
+    #                     status = FastAniJobStatus.FINISHED
+    #                 else:
+    #                     status = FastAniJobStatus.RUNNING
+    #         elif job.is_queued:
+    #             status = FastAniJobStatus.QUEUED
+    #         elif job.is_finished:
+    #             status = FastAniJobStatus.FINISHED
+    #         else:
+    #             status = FastAniJobStatus.ERROR
+    #
+    #         return FastAniJobInfo(
+    #             jobId=job_id,
+    #             createdOn=job.created_at.timestamp(),
+    #             status=status,
+    #         )
+    #     except NoSuchJobError:
+    #         raise HttpNotFound(f"No such job id: '{job_id}'")
+    # raise HttpInternalServerError('Unable to fetch job')
+
+
+def get_result_ids_for_gid_params(param_id: int, qry_gids: Set[int], ref_gids: Set[int], db: Session) -> Dict[
+    Tuple[int, int], int]:
+    # Generate the unique pairwise comparisons
+    unq_tuples = set()
+    for q_gid in qry_gids:
+        for r_gid in ref_gids:
+            unq_tuples.add((q_gid, r_gid))
+            unq_tuples.add((r_gid, q_gid))
+
+    # Create the SQL query that will obtain all result ids matching the input
+    or_groups = list()
+    for cur_q, cur_r in unq_tuples:
+        or_groups.append(sa.and_(GtdbFastaniResult.qry_id == cur_q, GtdbFastaniResult.ref_id == cur_r))
+    query_all = sa.select([GtdbFastaniResult.id, GtdbFastaniResult.qry_id, GtdbFastaniResult.ref_id]).where(
+        GtdbFastaniResult.param_id == param_id)
+    query_all = query_all.where(sa.or_(*or_groups))
+
+    # If there are rows to insert, proceed
+    if len(unq_tuples) > 0:
+
+        # Fetch the rows that already exist
+        rows_existing = db.execute(query_all).fetchall()
+
+        # Remove the existing rows from the set
+        dedup_tuples = unq_tuples - {(x.qry_id, x.ref_id) for x in rows_existing}
+
+        # Insert the remaining rows
+        if len(dedup_tuples) > 0:
+            rows_to_insert = [{'qry_id': x[0], 'ref_id': x[1], 'param_id': param_id} for x in dedup_tuples]
+            query = "INSERT INTO result (qry_id, ref_id, param_id) VALUES (:qry_id, :ref_id, :param_id);"
+            db.execute(query, rows_to_insert)
+            db.commit()
+
+    # Fetch the result ids for the query
+    rows_out = db.execute(query_all).fetchall()
+
+    # Subset those to the requested ids
+    out = dict()
+    for cur_result_id, cur_qry_id, cur_ref_id in rows_out:
+        out[(cur_qry_id, cur_ref_id)] = cur_result_id
+
+    return out
+
+
+def fastani_validate_genomes(request: FastAniGenomeValidationRequest, db_gtdb: Session, db_fastani: Session) -> List[
+    FastAniGenomeValidationResponse]:
+    # Perform some validation on the input argumens
+    query_gids = set(request.genomes)
+    max_limit = 5_000
+    if len(query_gids) > max_limit:
+        raise HttpBadRequest(f'You have exceeded the maximum number of genomes supported ({max_limit:,}).')
+    if len(query_gids) == 0:
+        return list()
+
+    # Retrieve the genomes from the GTDB database
+    query_n_gids = sa.select([
+        Genome.name,
+        MetadataTaxonomy.gtdb_domain,
+        MetadataTaxonomy.gtdb_phylum,
+        MetadataTaxonomy.gtdb_class,
+        MetadataTaxonomy.gtdb_order,
+        MetadataTaxonomy.gtdb_family,
+        MetadataTaxonomy.gtdb_genus,
+        MetadataTaxonomy.gtdb_species,
+        MetadataTaxonomy.gtdb_representative
+    ]). \
+        select_from(sa.join(Genome, MetadataTaxonomy).join(MetadataNcbi)). \
+        where(Genome.id == MetadataTaxonomy.id). \
+        where(Genome.id == MetadataNcbi.id). \
+        where(Genome.name.in_(list(query_gids))). \
+        where(MetadataNcbi.ncbi_genbank_assembly_accession != None). \
+        where(MetadataTaxonomy.gtdb_domain != 'd__'). \
+        where(MetadataTaxonomy.gtdb_phylum != 'p__'). \
+        where(MetadataTaxonomy.gtdb_class != 'c__'). \
+        where(MetadataTaxonomy.gtdb_order != 'o__'). \
+        where(MetadataTaxonomy.gtdb_family != 'f__'). \
+        where(MetadataTaxonomy.gtdb_genus != 'g__'). \
+        where(MetadataTaxonomy.gtdb_species != 's__')
+    db_gtdb_rows = db_gtdb.execute(query_n_gids).fetchall()
+
+    # Stage the output
+    d_out = dict()
+    for row in db_gtdb_rows:
+        d_out[row.name] = FastAniGenomeValidationResponse(
+            accession=row.name,
+            isSpRep=row.gtdb_representative,
+            gtdbDomain=row.gtdb_domain,
+            gtdbPhylum=row.gtdb_phylum,
+            gtdbClass=row.gtdb_class,
+            gtdbOrder=row.gtdb_order,
+            gtdbFamily=row.gtdb_family,
+            gtdbGenus=row.gtdb_genus,
+            gtdbSpecies=row.gtdb_species
+        )
+
+    # For any IDs that were not found, check the FastANI database
+    missing_gids = query_gids - set(d_out.keys())
+    if len(missing_gids) > 0:
+        query_missing = sa.select([GtdbFastaniGenome.name]).where(GtdbFastaniGenome.name.in_(list(missing_gids)))
+        db_fastani_rows = db_fastani.execute(query_missing).fetchall()
+        for row in db_fastani_rows:
+            d_out[row.name] = FastAniGenomeValidationResponse(
+                accession=row.name,
+                isSpRep=None,
+                gtdbDomain=None,
+                gtdbPhylum=None,
+                gtdbClass=None,
+                gtdbOrder=None,
+                gtdbFamily=None,
+                gtdbGenus=None,
+                gtdbSpecies=None
             )
-        except NoSuchJobError:
-            raise HttpNotFound(f"No such job id: '{job_id}'")
-    raise HttpInternalServerError('Unable to fetch job')
+
+    # Format the result
+    out = list(sorted(d_out.values(), key=lambda x: x.accession))
+    return out
+
+
+def get_fastani_job_metadata_control(job_id: int, db_gtdb: Session, db_fastani: Session) -> FastAniJobMetadata:
+    # Retrieve the parameters
+    params_qry = sa.select([
+        GtdbFastaniParam.frag_len,
+        GtdbFastaniParam.kmer_size,
+        GtdbFastaniParam.min_align_frac,
+        GtdbFastaniParam.min_align_frag, GtdbFastaniVersion.name
+    ]).join(GtdbFastaniJob, GtdbFastaniJob.param_id == GtdbFastaniParam.id).join(GtdbFastaniVersion,
+                                                                                 GtdbFastaniVersion.id == GtdbFastaniParam.version).where(
+        GtdbFastaniJob.id == job_id)
+    params_rows = db_fastani.execute(params_qry).fetchone()
+
+    if params_rows is None:
+        raise HttpNotFound(f'No job exists with the ID: {job_id}')
+
+    params = FastAniParameters(
+        version=params_rows.name,
+        frag_len=params_rows.frag_len,
+        kmer=params_rows.kmer_size,
+        min_frac=params_rows.min_align_frac,
+        min_frag=params_rows.min_align_frag
+    )
+
+    # Retrieve the genome accessions in the job
+    gid_query_qry = sa.select([GtdbFastaniGenome.name]).join(GtdbFastaniJobQuery,
+                                                             GtdbFastaniJobQuery.genome_id == GtdbFastaniGenome.id).where(
+        GtdbFastaniJobQuery.job_id == job_id)
+    gid_query_rows = db_fastani.execute(gid_query_qry).fetchall()
+    d_query_gids = {x.name: FastAniGenomeValidationResponse(accession=x.name) for x in gid_query_rows}
+
+    gid_ref_qry = sa.select([GtdbFastaniGenome.name]).join(GtdbFastaniJobReference,
+                                                           GtdbFastaniJobReference.genome_id == GtdbFastaniGenome.id).where(
+        GtdbFastaniJobReference.job_id == job_id)
+    gid_ref_rows = db_fastani.execute(gid_ref_qry).fetchall()
+    d_ref_gids = {x.name: FastAniGenomeValidationResponse(accession=x.name) for x in gid_ref_rows}
+
+    # Retrieve the genome metadata
+    all_gids = list(set(d_query_gids).union(d_ref_gids))
+    metadata_qry = sa.select([
+        Genome.name,
+        MetadataTaxonomy.gtdb_domain,
+        MetadataTaxonomy.gtdb_phylum,
+        MetadataTaxonomy.gtdb_class,
+        MetadataTaxonomy.gtdb_order,
+        MetadataTaxonomy.gtdb_family,
+        MetadataTaxonomy.gtdb_genus,
+        MetadataTaxonomy.gtdb_species,
+        MetadataTaxonomy.gtdb_representative
+    ]). \
+        select_from(sa.join(Genome, MetadataTaxonomy).join(MetadataNcbi)). \
+        where(Genome.id == MetadataTaxonomy.id). \
+        where(Genome.id == MetadataNcbi.id). \
+        where(Genome.name.in_(all_gids)). \
+        where(MetadataNcbi.ncbi_genbank_assembly_accession != None). \
+        where(MetadataTaxonomy.gtdb_domain != 'd__'). \
+        where(MetadataTaxonomy.gtdb_phylum != 'p__'). \
+        where(MetadataTaxonomy.gtdb_class != 'c__'). \
+        where(MetadataTaxonomy.gtdb_order != 'o__'). \
+        where(MetadataTaxonomy.gtdb_family != 'f__'). \
+        where(MetadataTaxonomy.gtdb_genus != 'g__'). \
+        where(MetadataTaxonomy.gtdb_species != 's__')
+    metadata_rows = db_gtdb.execute(metadata_qry).fetchall()
+
+    # Merge the rows
+    for row in metadata_rows:
+        gid = row.name
+        if gid in d_query_gids:
+            d_query_gids[gid] = FastAniGenomeValidationResponse(
+                accession=gid,
+                isSpRep=row.gtdb_representative,
+                gtdbDomain=row.gtdb_domain,
+                gtdbPhylum=row.gtdb_phylum,
+                gtdbClass=row.gtdb_class,
+                gtdbOrder=row.gtdb_order,
+                gtdbFamily=row.gtdb_family,
+                gtdbGenus=row.gtdb_genus,
+                gtdbSpecies=row.gtdb_species
+            )
+        if gid in d_ref_gids:
+            d_ref_gids[gid] = FastAniGenomeValidationResponse(
+                accession=gid,
+                isSpRep=row.gtdb_representative,
+                gtdbDomain=row.gtdb_domain,
+                gtdbPhylum=row.gtdb_phylum,
+                gtdbClass=row.gtdb_class,
+                gtdbOrder=row.gtdb_order,
+                gtdbFamily=row.gtdb_family,
+                gtdbGenus=row.gtdb_genus,
+                gtdbSpecies=row.gtdb_species
+            )
+    out = FastAniJobMetadata(
+        query=sorted(d_query_gids.values(), key=lambda x: x.accession),
+        reference=sorted(d_ref_gids.values(), key=lambda x: x.accession),
+        parameters=params
+    )
+    return out

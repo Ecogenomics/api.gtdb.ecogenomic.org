@@ -70,5 +70,5 @@ def v_get_taxon_card(taxon: str, db_gtdb: Session = Depends(get_gtdb_db), db_web
 
 
 @router.get('/{taxon}/genomes-detail', response_model=TaxonGenomesDetailResponse)
-def v_get_taxon_genomes_detail(taxon: str, db: Session = Depends(get_gtdb_db)):
-    return get_taxon_genomes_detail(taxon, db)
+def v_get_taxon_genomes_detail(taxon: str, sp_reps_only: Optional[bool] = False, db: Session = Depends(get_gtdb_db)):
+    return get_taxon_genomes_detail(taxon, sp_reps_only, db)

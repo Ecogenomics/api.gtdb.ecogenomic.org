@@ -355,7 +355,7 @@ def get_taxon_card(taxon: str, db_gtdb: Session, db_web: Session) -> TaxonCard:
     )
 
 
-def get_taxon_genomes_detail(taxon: str, db: Session) -> TaxonGenomesDetailResponse:
+def get_taxon_genomes_detail(taxon: str, sp_reps_only: bool, db: Session) -> TaxonGenomesDetailResponse:
     idx_to_tax_col = (
         MetadataTaxonomy.gtdb_domain,
         MetadataTaxonomy.gtdb_phylum,
@@ -418,6 +418,9 @@ def get_taxon_genomes_detail(taxon: str, db: Session) -> TaxonGenomesDetailRespo
         order_by(MetadataTaxonomy.gtdb_species).\
         order_by(MetadataTaxonomy.gtdb_representative.desc()).\
         order_by(Genome.name)
+    if sp_reps_only:
+        query_n_gids = query_n_gids.where(MetadataTaxonomy.gtdb_representative == True)
+
     db_rows = db.execute(query_n_gids).fetchall()
     if len(db_rows) == 0:
         raise HttpNotFound(f'Taxon {taxon} not found')
