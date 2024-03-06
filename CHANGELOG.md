@@ -1,3 +1,10 @@
+## [2.18.4](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.18.3...v2.18.4) (2024-02-22)
+
+
+### Bug Fixes
+
+* **plausible:** Update Plausible to new domain name. ([e255a23](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/e255a23aec7298512287b6b6f2826fb412aa3343))
+
 ## [2.18.3](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.18.2...v2.18.3) (2024-02-22)
 
 
