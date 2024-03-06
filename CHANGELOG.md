@@ -1,3 +1,10 @@
+# [2.19.0](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.18.4...v2.19.0) (2024-03-06)
+
+
+### Features
+
+* **fastani:** Update FastANI calculator API. ([0c9c4d3](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/0c9c4d382eed1b3db2b5cd547eef37ab89d6b7cb))
+
 ## [2.18.4](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.18.3...v2.18.4) (2024-02-22)
 
 
