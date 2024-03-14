@@ -78,7 +78,7 @@ FASTANI_DB_PASS = os.environ.get('FASTANI_DB_PASS')
 FASTANI_DB_NAME = os.environ.get('FASTANI_DB_NAME')
 
 # Maximum number of pairwise comparisons in a single job
-FASTANI_MAX_PAIRWISE = 1000
+FASTANI_MAX_PAIRWISE = 3000
 
 # Maximum runtime before job is marked as failed (seconds)
 FASTANI_JOB_TIMEOUT = '10m'

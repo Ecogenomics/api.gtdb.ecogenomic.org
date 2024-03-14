@@ -375,7 +375,7 @@ def enqueue_fastani(request: FastAniJobRequest, db: Session) -> FastAniJobResult
     param_id = get_or_set_db_param_id(db, request.parameters)
 
     # Create records for each of these jobs in the result table
-    d_qry_ref_ids = get_result_ids_for_gid_params(param_id, qry_genomes_ids, ref_genomes_ids, db)
+    d_qry_ref_ids = get_result_ids_for_gid_params(is_priority, param_id, qry_genomes_ids, ref_genomes_ids, db)
     result_ids = set(d_qry_ref_ids.values())
 
     # Create the job itself and associate the result ids with it
@@ -748,7 +748,7 @@ def get_fastani_job_info(job_id: int, db: Session) -> FastAniJobInfo:
     # raise HttpInternalServerError('Unable to fetch job')
 
 
-def get_result_ids_for_gid_params(param_id: int, qry_gids: Set[int], ref_gids: Set[int], db: Session) -> Dict[
+def get_result_ids_for_gid_params(is_priority: bool, param_id: int, qry_gids: Set[int], ref_gids: Set[int], db: Session) -> Dict[
     Tuple[int, int], int]:
     # Generate the unique pairwise comparisons
     unq_tuples = set()
