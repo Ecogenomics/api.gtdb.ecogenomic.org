@@ -116,6 +116,13 @@ if ENV_NAME is Env.LOCAL:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    port = 9000
+elif ENV_NAME is Env.PROD:
+    port = 9000
+elif ENV_NAME is Env.DEV:
+    port = 9001
+else:
+    port = 9000
 
 
 async def send_request_to_plausible(request: Request):
@@ -123,14 +130,14 @@ async def send_request_to_plausible(request: Request):
     #
     try:
         if ENV_NAME is Env.PROD:
-            domain = 'api.gtdb.ecogenomic.org'
+            domain = 'gtdb-api.ecogenomic.org'
         elif ENV_NAME is Env.DEV:
-            domain = 'api.gtdb-dev.ecogenomic.org'
+            domain = 'gtdb-api-dev.ecogenomic.org'
         else:
             print('Running local - skipping analytics.')
             return
 
-        url = 'https://plausible.gtdb.ecogenomic.org/api/event'
+        url = 'https://gtdb-stats.ecogenomic.org/api/event'
         user_agent = request.headers.get('user-agent')
         x_forwarded_for = request.headers.get('x-forwarded-for')
 
@@ -189,4 +196,4 @@ async def v_favicon():
 
 # If running locally
 if __name__ == "__main__":
-    uvicorn.run('main:app', host="0.0.0.0", port=9000, reload=True)
+    uvicorn.run('main:app', host="0.0.0.0", port=port, reload=True)

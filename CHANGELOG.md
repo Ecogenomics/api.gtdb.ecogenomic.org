@@ -1,3 +1,38 @@
+# [2.19.0](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.18.4...v2.19.0) (2024-03-06)
+
+
+### Features
+
+* **fastani:** Update FastANI calculator API. ([0c9c4d3](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/0c9c4d382eed1b3db2b5cd547eef37ab89d6b7cb))
+
+## [2.18.4](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.18.3...v2.18.4) (2024-02-22)
+
+
+### Bug Fixes
+
+* **plausible:** Update Plausible to new domain name. ([e255a23](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/e255a23aec7298512287b6b6f2826fb412aa3343))
+
+## [2.18.3](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.18.2...v2.18.3) (2024-02-22)
+
+
+### Bug Fixes
+
+* **status:** Scale database time to milliseconds. ([03bb1a4](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/03bb1a40aa3d850e0a0c026d01d0a4d689162c9f))
+
+## [2.18.2](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.18.1...v2.18.2) (2023-12-10)
+
+
+### Bug Fixes
+
+* **db:** Increase connection pool size. ([d710ee3](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/d710ee384428566d751170d2c6646b06f29313b8))
+
+## [2.18.1](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.18.0...v2.18.1) (2023-09-28)
+
+
+### Bug Fixes
+
+* **db:** Increase connection pool size due to timeouts. ([7f25d4a](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/7f25d4a6395f6af627b67457792c9e4bfff8f0a5))
+
 # [2.18.0](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.17.0...v2.18.0) (2023-09-28)
 
 

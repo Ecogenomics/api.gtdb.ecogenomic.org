@@ -15,4 +15,4 @@ def get_status(db: Session) -> StatusDbResponse:
     except Exception:
         is_ok = False
     end = time()
-    return StatusDbResponse(timeMs=round(end - start, 4), online=is_ok)
+    return StatusDbResponse(timeMs=round((end - start) * 1000, 4), online=is_ok)
