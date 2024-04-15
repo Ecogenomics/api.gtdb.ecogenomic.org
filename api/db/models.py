@@ -147,7 +147,7 @@ class MetadataNcbi(GtdbBase):
 class MetadataGene(GtdbBase):
     __tablename__ = 'metadata_genes'
 
-    id = Column(ForeignKey('genomes.id', ondelete='CASCADE', onupdate='CASCADE'), primary_key=True)
+    id = Column(ForeignKey('genomes.id'), primary_key=True)
     checkm_completeness = Column(DOUBLE_PRECISION)
     checkm_contamination = Column(DOUBLE_PRECISION)
     protein_count = Column(Integer)
@@ -162,6 +162,9 @@ class MetadataGene(GtdbBase):
     lsu_23s_count = Column(Integer)
     lsu_5s_count = Column(Integer)
     checkm_strain_heterogeneity_100 = Column(DOUBLE_PRECISION)
+    checkm2_completeness = Column(DOUBLE_PRECISION)
+    checkm2_contamination = Column(DOUBLE_PRECISION)
+    checkm2_model = Column(Text)
 
 
 class MetadataRna(GtdbBase):
@@ -260,7 +263,7 @@ class User(GtdbBase):
 
 
 class MetadataView(GtdbBase):
-    __tablename__ = 'metadata_view'
+    __tablename__ = 'metadata_mtview'
 
     id = Column(Integer, primary_key=True)
     accession = Column(Text)
@@ -308,6 +311,9 @@ class MetadataView(GtdbBase):
     checkm_genome_count = Column(Integer)
     checkm_marker_set_count = Column(Integer)
     checkm_strain_heterogeneity = Column(DOUBLE_PRECISION)
+    checkm2_completeness = Column(DOUBLE_PRECISION)
+    checkm2_contamination = Column(DOUBLE_PRECISION)
+    checkm2_model = Column(Text)
     lsu_23s_count = Column(Integer)
     lsu_5s_count = Column(Integer)
     checkm_strain_heterogeneity_100 = Column(DOUBLE_PRECISION)

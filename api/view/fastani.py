@@ -27,24 +27,6 @@ async def fastani_view(job_request: FastAniJobRequest, db: Session = Depends(get
 async def get_config():
     return get_fastani_config()
 
-
-@router.get('/{job_id}', response_model=FastAniJobResult,
-            summary='Retrieve the result of a FastANI job.')
-async def get_by_id(
-        job_id: int,
-        response: Response,
-        rows: Optional[int] = None,
-        page: Optional[int] = None,
-        sortBy: Optional[str] = None,
-        sortDesc: Optional[str] = None,
-        db: Session = Depends(get_gtdb_fastani_db)
-):
-    response.headers["Cache-Control"] = "no-cache, no-store, max-age=0"
-    sort_by = sortBy.split(',') if sortBy is not None else None
-    sort_desc = [x == 'true' for x in sortDesc.split(',')] if sortDesc is not None else None
-    return get_fastani_job_progress(job_id, rows, page, sort_by, sort_desc, db)
-
-
 @router.get('/{job_id}', response_model=FastAniJobResult,
             summary='Retrieve the result of a FastANI job.')
 async def get_by_id(
