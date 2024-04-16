@@ -3,6 +3,7 @@ from typing import Optional
 
 from fastapi import APIRouter
 from fastapi import Depends, Query
+from fastapi import Request, Response
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
@@ -11,6 +12,7 @@ from api.controller.taxonomy import post_taxonomy_count, taxonomy_count_rows_to_
 from api.db import get_gtdb_db, get_gtdb_web_db
 from api.model.taxonomy import TaxonomyCountRequest, TaxonomyCountResponse, TaxaNotInLiterature, TaxonomyOptional, \
     TaxonomyOptionalRelease
+from api.util.cache import cached
 from api.util.io import rows_to_delim
 
 router = APIRouter(prefix='/taxonomy', tags=['taxonomy'])
@@ -79,21 +81,46 @@ def taxonomy_count_download(fmt: Literal['csv', 'tsv'],
     return response
 
 
-@router.get('/not-in-literature', response_model=List[TaxaNotInLiterature],
-            summary='Returns a list of all GTDB proposed taxa.')
-def get_taxon_not_in_literature(db: Session = Depends(get_gtdb_web_db)):
+@router.get(
+    '/not-in-literature',
+    response_model=List[TaxaNotInLiterature],
+    summary='Returns a list of all GTDB proposed taxa.'
+)
+async def get_taxon_not_in_literature(
+        request: Request,
+        response: Response,
+        db: Session = Depends(get_gtdb_web_db)
+):
     return taxa_not_in_lit(db)
 
 
 # new below
 
-@router.get('/partial/{taxon}', response_model=TaxonomyOptional,
-            summary='Find the partial taxonomy given a taxon.')
-def partial_taxon_search(taxon: str, db: Session = Depends(get_gtdb_db)):
+@router.get(
+    '/partial/{taxon}',
+    response_model=TaxonomyOptional,
+    summary='Find the partial taxonomy given a taxon.'
+)
+@cached(ttl=-1, disk=True)
+async def partial_taxon_search(
+        taxon: str,
+        request: Request,
+        response: Response,
+        db: Session = Depends(get_gtdb_db),
+):
     return taxonomy_partial_search(taxon, db)
 
 
-@router.get('/partial/{taxon}/all-releases', response_model=List[TaxonomyOptionalRelease],
-            summary='Find the partial taxonomy given a taxon across all releases (including NCBI).')
-def v_partial_taxon_all_releases(taxon: str, db: Session = Depends(get_gtdb_web_db)):
+@router.get(
+    '/partial/{taxon}/all-releases',
+    response_model=List[TaxonomyOptionalRelease],
+    summary='Find the partial taxonomy given a taxon across all releases (including NCBI).'
+)
+@cached(ttl=-1, disk=True)
+async def v_partial_taxon_all_releases(
+        taxon: str,
+        request: Request,
+        response: Response,
+        db: Session = Depends(get_gtdb_web_db)
+):
     return taxonomy_partial_search_all_releases(taxon, db)

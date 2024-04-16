@@ -1,5 +1,6 @@
 import os
 from enum import Enum
+from pathlib import Path
 
 from rq import Retry
 
@@ -23,6 +24,12 @@ ENV_NAME = Env[os.environ.get('ENV_NAME', 'local').upper()]
 POSTGRES_HOST = os.environ.get('POSTGRES_HOST', '')
 POSTGRES_USER = os.environ.get('POSTGRES_USER', '')
 POSTGRES_PASS = os.environ.get('POSTGRES_PASS', '')
+
+# ------------------------------------------------------------------------------
+# Caching
+# ------------------------------------------------------------------------------
+CACHE_DIR: Path | None = Path(os.environ['CACHE_DIR']) if os.environ.get('CACHE_DIR') else None
+
 
 # ------------------------------------------------------------------------------
 # RedisQueue
