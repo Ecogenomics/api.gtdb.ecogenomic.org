@@ -102,9 +102,16 @@ def search_gtdb(request: SearchGtdbRequest, db: Session) -> SearchGtdbResponse:
         ))
 
     # Determine the order_by clause
-    if request.sortBy and request.sortDesc and 0 < len(request.sortBy) == len(request.sortDesc):
+    if request.sortBy:
         order_by = list()
-        for sort_by, sort_desc in zip(request.sortBy, request.sortDesc):
+        for i, sort_by in enumerate(request.sortBy):
+            # Attempt to get the sorting value, default to asc if not present
+            try:
+                sort_desc = request.sortDesc[i]
+            except IndexError:
+                sort_desc = False
+
+            # Match the column
             if sort_by == 'accession':
                 order_by.append(GtdbSearchMtView.id_at_source.desc() if sort_desc else GtdbSearchMtView.id_at_source)
             elif sort_by == 'ncbiOrgName':
