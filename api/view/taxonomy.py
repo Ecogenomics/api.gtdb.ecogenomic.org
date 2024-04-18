@@ -101,7 +101,7 @@ async def get_taxon_not_in_literature(
     response_model=TaxonomyOptional,
     summary='Find the partial taxonomy given a taxon.'
 )
-@cached(ttl=-1, disk=True)
+# @cached(ttl=-1, disk=True)
 async def partial_taxon_search(
         taxon: str,
         request: Request,
@@ -116,7 +116,7 @@ async def partial_taxon_search(
     response_model=List[TaxonomyOptionalRelease],
     summary='Find the partial taxonomy given a taxon across all releases (including NCBI).'
 )
-@cached(ttl=-1, disk=True)
+# @cached(ttl=-1, disk=True)
 async def v_partial_taxon_all_releases(
         taxon: str,
         request: Request,
