@@ -123,7 +123,7 @@ def get_method(expression, groups: Dict[int, Tuple[AdvancedSearchColumn, Advance
     columns_to_select = list(BASE_COLS)
     columns_to_select.extend([v[0] for k, v in groups.items() if v[0] not in set_base_cols])
     str_columns = ', '.join([f'mv.{x.column.key}' for x in columns_to_select])
-    query = sql.text(f"SELECT {str_columns} FROM genomes g INNER JOIN metadata_view mv "
+    query = sql.text(f"SELECT {str_columns} FROM genomes g INNER JOIN metadata_mtview mv "
                      f"on mv.id = g.id WHERE g.genome_source_id != 1 AND ({str_where}) "
                      f"ORDER BY g.id")
     results = db.execute(query, parameters)
