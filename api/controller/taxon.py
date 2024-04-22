@@ -5,7 +5,7 @@ import sqlalchemy as sa
 from sqlalchemy import sql
 from sqlalchemy.orm import Session
 
-from api.db.models import GtdbSpeciesClusterCount, DbGtdbTree, DbGtdbTreeChildren, GtdbWebTaxonHist, MetadataTaxonomy, \
+from api.db.models import GtdbSpeciesClusterCount, GtdbWebTaxonHist, MetadataTaxonomy, \
     Genome, MetadataNucleotide, MetadataNcbi
 from api.exceptions import HttpBadRequest, HttpNotFound
 from api.model.graph import GraphHistogramBin
@@ -15,33 +15,41 @@ from api.model.taxon import TaxonDescendants, TaxonSearchResponse, TaxonPrevious
 
 def get_taxon_descendants(taxon: str, db: Session) -> List[TaxonDescendants]:
     """Returns the direct descendants below this taxon."""
+    query = sql.text("""
+        SELECT t.taxon,
+               t.total,
+               t.type,
+               t.is_rep,
+               t.type_material,
+               t.n_desc_children,
+               b.url   AS bergeys_url,
+               s.url   AS seqcode_url,
+               l.url   as lpsn_url,
+               n.taxid AS ncbi_taxid
+        FROM gtdb_tree t
+                 LEFT JOIN gtdb_tree_url_bergeys b ON b.id = t.id
+                 LEFT JOIN gtdb_tree_url_lpsn l ON l.id = t.id
+                 LEFT JOIN gtdb_tree_url_ncbi n ON n.id = t.id
+                 LEFT JOIN gtdb_tree_url_seqcode s ON s.id = t.id
+                 INNER JOIN (SELECT t2.id, 0 AS order_id
+                             FROM gtdb_tree t2
+                             WHERE t2.taxon = :taxon
+                               AND t2.type = 'genome'
+        
+                             UNION
+        
+                             SELECT c2.child_id AS id, c2.order_id
+                             FROM gtdb_tree t3
+                                      INNER JOIN gtdb_tree_children c2 ON c2.parent_id = t3.id
+                             WHERE t3.taxon = :taxon) AS subq ON subq.id = t.id
+        ORDER BY subq.order_id;
+    """)
 
-    # TODO: Convert this into once nested query.
+    results = db.execute(query, {'taxon': taxon}).fetchall()
+    if not results or len(results) == 0:
+        raise HttpNotFound(f'Taxon not found: {taxon}')
 
-    # Get parent info
-    taxon_query = sa.select([DbGtdbTree.id]).where(DbGtdbTree.taxon == taxon)
-    taxon_results = db.execute(taxon_query).fetchall()
-
-    if len(taxon_results) != 1:
-        raise HttpBadRequest(f'Taxon {taxon} not found')
-    parent_id = taxon_results[0].id
-
-    # Get the child info
-    children_query = sa.select([
-        DbGtdbTree.taxon, DbGtdbTree.total,
-        DbGtdbTree.type, DbGtdbTree.is_rep,
-        DbGtdbTree.type_material,
-        DbGtdbTree.n_desc_children,
-        DbGtdbTree.bergeys_url,
-        DbGtdbTree.seqcode_url,
-        DbGtdbTree.lpsn_url,
-        DbGtdbTree.ncbi_taxid
-    ]) \
-        .filter(DbGtdbTreeChildren.child_id == DbGtdbTree.id) \
-        .where(DbGtdbTreeChildren.parent_id == parent_id) \
-        .order_by(DbGtdbTreeChildren.order_id)
-
-    for result in db.execute(children_query):
+    for result in results:
         yield TaxonDescendants(taxon=result.taxon,
                                total=result.total,
                                isGenome=result.type == 'genome',
@@ -194,7 +202,8 @@ def results_from_previous_releases(search: str, db: Session, page: Optional[int]
                             UNION ALL
                         SELECT DISTINCT rank_species, release_ver FROM taxon_hist WHERE rank_species ILIKE :arg;""")
     results = db.execute(query, {'arg': search})
-    rank_order_dict = {'R80': 0, 'R83': 1, 'R86.2': 2, 'R89': 3, 'R95': 4, 'R202': 5, 'R207': 6, 'R214': 7, 'R220': 8, 'NCBI': 9}
+    rank_order_dict = {'R80': 0, 'R83': 1, 'R86.2': 2, 'R89': 3, 'R95': 4, 'R202': 5, 'R207': 6, 'R214': 7, 'R220': 8,
+                       'NCBI': 9}
 
     # There's a case that exists where the case is slightly different for previous releases.
     # Therefore, if all the keys are the same (ignoring case), and the current release is present
@@ -396,27 +405,27 @@ def get_taxon_genomes_detail(taxon: str, sp_reps_only: bool, db: Session) -> Tax
         MetadataTaxonomy.gtdb_genus,
         MetadataTaxonomy.gtdb_species,
         MetadataTaxonomy.gtdb_representative
-    ]).\
-        select_from(sa.join(Genome, MetadataTaxonomy).join(MetadataNcbi)).\
-        where(target_col == taxon).\
-        where(Genome.id == MetadataTaxonomy.id).\
-        where(Genome.id == MetadataNcbi.id).\
-        where(MetadataNcbi.ncbi_genbank_assembly_accession != None).\
-        where(MetadataTaxonomy.gtdb_domain != 'd__').\
-        where(MetadataTaxonomy.gtdb_phylum != 'p__').\
-        where(MetadataTaxonomy.gtdb_class != 'c__').\
-        where(MetadataTaxonomy.gtdb_order != 'o__').\
-        where(MetadataTaxonomy.gtdb_family != 'f__').\
-        where(MetadataTaxonomy.gtdb_genus != 'g__').\
-        where(MetadataTaxonomy.gtdb_species != 's__').\
-        order_by(MetadataTaxonomy.gtdb_domain).\
-        order_by(MetadataTaxonomy.gtdb_phylum).\
-        order_by(MetadataTaxonomy.gtdb_class).\
-        order_by(MetadataTaxonomy.gtdb_order).\
-        order_by(MetadataTaxonomy.gtdb_family).\
-        order_by(MetadataTaxonomy.gtdb_genus).\
-        order_by(MetadataTaxonomy.gtdb_species).\
-        order_by(MetadataTaxonomy.gtdb_representative.desc()).\
+    ]). \
+        select_from(sa.join(Genome, MetadataTaxonomy).join(MetadataNcbi)). \
+        where(target_col == taxon). \
+        where(Genome.id == MetadataTaxonomy.id). \
+        where(Genome.id == MetadataNcbi.id). \
+        where(MetadataNcbi.ncbi_genbank_assembly_accession != None). \
+        where(MetadataTaxonomy.gtdb_domain != 'd__'). \
+        where(MetadataTaxonomy.gtdb_phylum != 'p__'). \
+        where(MetadataTaxonomy.gtdb_class != 'c__'). \
+        where(MetadataTaxonomy.gtdb_order != 'o__'). \
+        where(MetadataTaxonomy.gtdb_family != 'f__'). \
+        where(MetadataTaxonomy.gtdb_genus != 'g__'). \
+        where(MetadataTaxonomy.gtdb_species != 's__'). \
+        order_by(MetadataTaxonomy.gtdb_domain). \
+        order_by(MetadataTaxonomy.gtdb_phylum). \
+        order_by(MetadataTaxonomy.gtdb_class). \
+        order_by(MetadataTaxonomy.gtdb_order). \
+        order_by(MetadataTaxonomy.gtdb_family). \
+        order_by(MetadataTaxonomy.gtdb_genus). \
+        order_by(MetadataTaxonomy.gtdb_species). \
+        order_by(MetadataTaxonomy.gtdb_representative.desc()). \
         order_by(Genome.name)
     if sp_reps_only:
         query_n_gids = query_n_gids.where(MetadataTaxonomy.gtdb_representative == True)

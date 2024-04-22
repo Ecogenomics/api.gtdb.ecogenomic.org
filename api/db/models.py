@@ -505,10 +505,6 @@ class DbGtdbTree(GtdbWebBase):
     is_rep = Column(Boolean)
     type_material = Column(Text)
     n_desc_children = Column(Integer)
-    bergeys_url = Column(Text)
-    seqcode_url = Column(Text)
-    lpsn_url = Column(Text)
-    ncbi_taxid = Column(Integer)
 
 
 class DbGtdbTreeChildren(GtdbWebBase):
@@ -546,6 +542,30 @@ class GtdbWebTaxonHist(GtdbWebBase):
     rank_family = Column(Text)
     rank_genus = Column(Text)
     rank_species = Column(Text)
+
+
+class GtdbWebUrlBergeys(GtdbWebBase):
+    __tablename__ = 'gtdb_tree_url_bergeys'
+    id = Column(ForeignKey(DbGtdbTree.id), primary_key=True, nullable=False)
+    url = Column(Text, nullable=False)
+
+
+class GtdbWebUrlLpsn(GtdbWebBase):
+    __tablename__ = 'gtdb_tree_url_lpsn'
+    id = Column(ForeignKey(DbGtdbTree.id), primary_key=True, nullable=False)
+    url = Column(Text, nullable=False)
+
+
+class GtdbWebUrlNcbi(GtdbWebBase):
+    __tablename__ = 'gtdb_tree_url_ncbi'
+    id = Column(ForeignKey(DbGtdbTree.id), primary_key=True, nullable=False)
+    taxid = Column(Integer, nullable=False)
+
+
+class GtdbWebUrlSeqcode(GtdbWebBase):
+    __tablename__ = 'gtdb_tree_url_seqcode'
+    id = Column(ForeignKey(DbGtdbTree.id), primary_key=True, nullable=False)
+    url = Column(Text, nullable=False)
 
 
 class GtdbWebLpsnUrl(GtdbWebBase):
@@ -838,6 +858,7 @@ class GtdbFastaniResult(GtdbFastaniBase):
     priority = Column(Integer, nullable=False)
     error = Column(Boolean, nullable=False)
 
+
 class GtdbFastaniVersion(GtdbFastaniBase):
     __tablename__ = 'version'
     id = Column(Integer, primary_key=True)
@@ -849,8 +870,8 @@ class GtdbFastaniJobQuery(GtdbFastaniBase):
     job_id = Column(ForeignKey('job.id'), primary_key=True, nullable=False)
     genome_id = Column(ForeignKey('genome.id'), primary_key=True, nullable=False)
 
+
 class GtdbFastaniJobReference(GtdbFastaniBase):
     __tablename__ = 'job_reference'
     job_id = Column(ForeignKey('job.id'), primary_key=True, nullable=False)
     genome_id = Column(ForeignKey('genome.id'), primary_key=True, nullable=False)
-

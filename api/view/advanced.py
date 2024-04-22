@@ -19,19 +19,19 @@ router = APIRouter(prefix='/advanced', tags=['advanced'])
 
 @router.get('/options', response_model=List[AdvancedSearchOptionsResponse],
             summary='Return a list of all valid options in the advanced search.')
-async def v_advanced_get_options():
+def v_advanced_get_options():
     return get_advanced_search_options()
 
 
 @router.get('/operators', response_model=List[AdvancedSearchOperatorResponse],
             summary='Return a list of all valid operators in the advanced search.')
-async def v_advanced_get_operators():
+def v_advanced_get_operators():
     return get_advanced_search_operators()
 
 
 @router.get('/columns', response_model=List[AdvancedSearchColumnResponse],
             summary='Return a list of all valid columns in the advanced search.')
-async def v_advanced_get_columns():
+def v_advanced_get_columns():
     return get_advanced_search_columns()
 
 
@@ -43,7 +43,7 @@ def v_advanced_get_search(request: Request, db: Session = Depends(get_gtdb_db)):
 
 @router.get('/search/download/{fmt}', response_class=StreamingResponse,
             summary='Download the result of a Advanced Search query in delimited format.')
-async def get_by_id_download(fmt: Literal['csv', 'tsv'], request: Request, db: Session = Depends(get_gtdb_db)):
+def get_by_id_download(fmt: Literal['csv', 'tsv'], request: Request, db: Session = Depends(get_gtdb_db)):
     adv_result = get_advanced_search(query=dict(request.query_params), db=db)
     rows = adv_search_query_to_rows(adv_result)
     stream = rows_to_delim(rows, delim=',' if fmt == 'csv' else '\t')
@@ -53,7 +53,7 @@ async def get_by_id_download(fmt: Literal['csv', 'tsv'], request: Request, db: S
 
 
 @router.get('/search/download-genomes', response_class=StreamingResponse, summary='Download a shell script to download genomes from Advanced Search results.')
-async def v_download_genomes_from_adv(
+def v_download_genomes_from_adv(
         method: Literal['datasets', 'curl'], request: Request, db: Session = Depends(get_gtdb_db),
         gff: bool = False, rna: bool = False, cds: bool = False, protein: bool = False, genome: bool = True,
         seqReport: bool = False

@@ -23,6 +23,6 @@ def v_get_genome_taxon_history(accession: str, db: Session = Depends(get_gtdb_we
 
 @router.get('/{accession}/card', response_model=GenomeCard,
             summary='Taxon metadata.')
-async def v_genome_card(accession: str, db_gtdb: Session = Depends(get_gtdb_db),
+def v_genome_card(accession: str, db_gtdb: Session = Depends(get_gtdb_db),
                   db_web: Session = Depends(get_gtdb_web_db)):
     return genome_card(accession, db_gtdb, db_web)

@@ -12,9 +12,9 @@ router = APIRouter(prefix='/genomes', tags=['genomes'])
 
 
 @router.get('/all', response_model=List[str], summary='Return a list of all GTDB genomes')
-async def v_genomes_all(db: Session = Depends(get_gtdb_db)):
+def v_genomes_all(db: Session = Depends(get_gtdb_db)):
     return genomes_all(db)
 
 # @router.post('/are-downloaded', response_model=AreGenomesDownloadedResponse, summary='Check if a list of genomes are downloaded')
-# async def v_genomes_are_downloaded(request: AreGenomesDownloadedRequest, db: Session = Depends(get_gtdb_common_db)):
+# def v_genomes_are_downloaded(request: AreGenomesDownloadedRequest, db: Session = Depends(get_gtdb_common_db)):
 #     return are_genomes_downloaded(request, db)
