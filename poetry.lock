@@ -1494,4 +1494,4 @@ typing = "*"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11,<3.12"
-content-hash = "7b6332b757b80a705489ebb5d495b113c6d98d09ac43d1b054c28efd9f586354"
+content-hash = "b3304e03fdd6f3665cf785d72fc8a9052304b897f139ba2cb9c9d75f6e127610"
