@@ -1,5 +1,6 @@
 import os
 from enum import Enum
+from pathlib import Path
 
 from rq import Retry
 
@@ -23,6 +24,12 @@ ENV_NAME = Env[os.environ.get('ENV_NAME', 'local').upper()]
 POSTGRES_HOST = os.environ.get('POSTGRES_HOST', '')
 POSTGRES_USER = os.environ.get('POSTGRES_USER', '')
 POSTGRES_PASS = os.environ.get('POSTGRES_PASS', '')
+
+# ------------------------------------------------------------------------------
+# Caching
+# ------------------------------------------------------------------------------
+CACHE_DIR: Path | None = Path(os.environ['CACHE_DIR']) if os.environ.get('CACHE_DIR') else None
+
 
 # ------------------------------------------------------------------------------
 # RedisQueue
@@ -78,7 +85,7 @@ FASTANI_DB_PASS = os.environ.get('FASTANI_DB_PASS')
 FASTANI_DB_NAME = os.environ.get('FASTANI_DB_NAME')
 
 # Maximum number of pairwise comparisons in a single job
-FASTANI_MAX_PAIRWISE = 1000
+FASTANI_MAX_PAIRWISE = 3000
 
 # Maximum runtime before job is marked as failed (seconds)
 FASTANI_JOB_TIMEOUT = '10m'
@@ -96,5 +103,5 @@ FASTANI_JOB_RETRY = Retry(max=3)
 FASTANI_GENOME_DIR = os.environ.get('FASTANI_GENOME_DIR')
 
 # GTDB releases
-GTDB_RELEASES = ('R80', 'R83', 'R86.2', 'R89', 'R95', 'R202', 'R207', 'R214', 'NCBI')
+GTDB_RELEASES = ('R80', 'R83', 'R86.2', 'R89', 'R95', 'R202', 'R207', 'R214', 'R220', 'NCBI')
 

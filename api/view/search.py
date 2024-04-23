@@ -39,7 +39,7 @@ def get_search_gtdb(search: str,
 
 @router.get('/gtdb/{fmt}', response_class=StreamingResponse,
             summary='Download the results of a GTDB search.')
-async def get_by_id_download(search: str,
+def get_by_id_download(search: str,
                              fmt: Literal['csv', 'tsv'],
                              sortBy: Optional[str] = None,
                              sortDesc: Optional[str] = None,

@@ -1,3 +1,5 @@
+import datetime
+
 from sqlalchemy import CHAR, Boolean, Column, Date, DateTime, Float, \
     ForeignKey, Integer, Text, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import DOUBLE_PRECISION, BIGINT
@@ -147,7 +149,7 @@ class MetadataNcbi(GtdbBase):
 class MetadataGene(GtdbBase):
     __tablename__ = 'metadata_genes'
 
-    id = Column(ForeignKey('genomes.id', ondelete='CASCADE', onupdate='CASCADE'), primary_key=True)
+    id = Column(ForeignKey('genomes.id'), primary_key=True)
     checkm_completeness = Column(DOUBLE_PRECISION)
     checkm_contamination = Column(DOUBLE_PRECISION)
     protein_count = Column(Integer)
@@ -162,6 +164,9 @@ class MetadataGene(GtdbBase):
     lsu_23s_count = Column(Integer)
     lsu_5s_count = Column(Integer)
     checkm_strain_heterogeneity_100 = Column(DOUBLE_PRECISION)
+    checkm2_completeness = Column(DOUBLE_PRECISION)
+    checkm2_contamination = Column(DOUBLE_PRECISION)
+    checkm2_model = Column(Text)
 
 
 class MetadataRna(GtdbBase):
@@ -260,7 +265,7 @@ class User(GtdbBase):
 
 
 class MetadataView(GtdbBase):
-    __tablename__ = 'metadata_view'
+    __tablename__ = 'metadata_mtview'
 
     id = Column(Integer, primary_key=True)
     accession = Column(Text)
@@ -308,6 +313,9 @@ class MetadataView(GtdbBase):
     checkm_genome_count = Column(Integer)
     checkm_marker_set_count = Column(Integer)
     checkm_strain_heterogeneity = Column(DOUBLE_PRECISION)
+    checkm2_completeness = Column(DOUBLE_PRECISION)
+    checkm2_contamination = Column(DOUBLE_PRECISION)
+    checkm2_model = Column(Text)
     lsu_23s_count = Column(Integer)
     lsu_5s_count = Column(Integer)
     checkm_strain_heterogeneity_100 = Column(DOUBLE_PRECISION)
@@ -499,10 +507,6 @@ class DbGtdbTree(GtdbWebBase):
     is_rep = Column(Boolean)
     type_material = Column(Text)
     n_desc_children = Column(Integer)
-    bergeys_url = Column(Text)
-    seqcode_url = Column(Text)
-    lpsn_url = Column(Text)
-    ncbi_taxid = Column(Integer)
 
 
 class DbGtdbTreeChildren(GtdbWebBase):
@@ -540,6 +544,30 @@ class GtdbWebTaxonHist(GtdbWebBase):
     rank_family = Column(Text)
     rank_genus = Column(Text)
     rank_species = Column(Text)
+
+
+class GtdbWebUrlBergeys(GtdbWebBase):
+    __tablename__ = 'gtdb_tree_url_bergeys'
+    id = Column(ForeignKey(DbGtdbTree.id), primary_key=True, nullable=False)
+    url = Column(Text, nullable=False)
+
+
+class GtdbWebUrlLpsn(GtdbWebBase):
+    __tablename__ = 'gtdb_tree_url_lpsn'
+    id = Column(ForeignKey(DbGtdbTree.id), primary_key=True, nullable=False)
+    url = Column(Text, nullable=False)
+
+
+class GtdbWebUrlNcbi(GtdbWebBase):
+    __tablename__ = 'gtdb_tree_url_ncbi'
+    id = Column(ForeignKey(DbGtdbTree.id), primary_key=True, nullable=False)
+    taxid = Column(Integer, nullable=False)
+
+
+class GtdbWebUrlSeqcode(GtdbWebBase):
+    __tablename__ = 'gtdb_tree_url_seqcode'
+    id = Column(ForeignKey(DbGtdbTree.id), primary_key=True, nullable=False)
+    url = Column(Text, nullable=False)
 
 
 class GtdbWebLpsnUrl(GtdbWebBase):
@@ -680,8 +708,19 @@ class GtdbCommonLpsnHtmlSynonyms(GtdbCommonBase):
 class GtdbCommonSeqCodeHtml(GtdbCommonBase):
     __tablename__ = 'seqcode_html'
     id = Column(Integer, primary_key=True)
-    name = Column(Text)
-    rank = Column(Text)
+    updated = Column(TIMESTAMP, nullable=False, default=datetime.datetime.utcnow)
+    to_process = Column(Boolean, nullable=False)
+    etag = Column(Text, nullable=True)
+    name = Column(Text, nullable=True)
+    rank = Column(Text, nullable=True)
+    status_name = Column(Text, nullable=True)
+    syllabification = Column(Text, nullable=True)
+    priority_date = Column(TIMESTAMP, nullable=True)
+    formal_styling_raw = Column(Text, nullable=True)
+    formal_styling_html = Column(Text, nullable=True)
+    etymology = Column(Text, nullable=True)
+    sc_created_at = Column(TIMESTAMP, nullable=True)
+    sc_updated_at = Column(TIMESTAMP, nullable=True)
     domain_id = Column(ForeignKey('seqcode_html.id'), nullable=True)
     phylum_id = Column(ForeignKey('seqcode_html.id'), nullable=True)
     class_id = Column(ForeignKey('seqcode_html.id'), nullable=True)
@@ -689,6 +728,30 @@ class GtdbCommonSeqCodeHtml(GtdbCommonBase):
     family_id = Column(ForeignKey('seqcode_html.id'), nullable=True)
     genus_id = Column(ForeignKey('seqcode_html.id'), nullable=True)
     species_id = Column(ForeignKey('seqcode_html.id'), nullable=True)
+    corrigendum_by_id = Column(Integer, nullable=True)
+    corrigendum_by_citation = Column(Text, nullable=True)
+    corrigendum_from = Column(Text, nullable=True)
+    content = Column(Text, nullable=True)
+    description_raw = Column(Text, nullable=True)
+    proposed_by_id = Column(Text, nullable=True)
+    proposed_by_citation = Column(Text, nullable=True)
+    notes_raw = Column(Text, nullable=True)
+    notes_html = Column(Text, nullable=True)
+
+
+class GtdbCommonSeqCodeHtmlChildren(GtdbCommonBase):
+    __tablename__ = 'seqcode_html_children'
+    parent_id = Column(Integer, primary_key=True)
+    child_id = Column(Integer, primary_key=True)
+
+
+class GtdbCommonSeqCodeHtmlQcWarnings(GtdbCommonBase):
+    __tablename__ = 'seqcode_html_qc_warnings'
+    id = Column(Integer, primary_key=True)
+    sc_id = Column(ForeignKey('seqcode_html.id'), nullable=False)
+    can_approve = Column(Boolean, nullable=True)
+    text = Column(Text, nullable=False)
+    rules = Column(Text, nullable=True)
 
 
 class GtdbCommonNcbiCitation(GtdbCommonBase):
@@ -832,6 +895,7 @@ class GtdbFastaniResult(GtdbFastaniBase):
     priority = Column(Integer, nullable=False)
     error = Column(Boolean, nullable=False)
 
+
 class GtdbFastaniVersion(GtdbFastaniBase):
     __tablename__ = 'version'
     id = Column(Integer, primary_key=True)
@@ -843,8 +907,8 @@ class GtdbFastaniJobQuery(GtdbFastaniBase):
     job_id = Column(ForeignKey('job.id'), primary_key=True, nullable=False)
     genome_id = Column(ForeignKey('genome.id'), primary_key=True, nullable=False)
 
+
 class GtdbFastaniJobReference(GtdbFastaniBase):
     __tablename__ = 'job_reference'
     job_id = Column(ForeignKey('job.id'), primary_key=True, nullable=False)
     genome_id = Column(ForeignKey('genome.id'), primary_key=True, nullable=False)
-

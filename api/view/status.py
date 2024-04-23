@@ -10,6 +10,6 @@ router = APIRouter(prefix='/status', tags=['status'])
 
 
 @router.get('/db', summary='Return the database status.', response_model=StatusDbResponse)
-async def v_get_status(response: Response, db: Session = Depends(get_gtdb_web_db)):
+def v_get_status(response: Response, db: Session = Depends(get_gtdb_web_db)):
     response.headers["Cache-Control"] = "no-cache, no-store, max-age=0"
     return get_status(db)

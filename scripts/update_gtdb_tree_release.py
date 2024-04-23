@@ -1,10 +1,11 @@
-import requests
 
 if __name__ == '__main__':
     from dotenv import load_dotenv
 
     load_dotenv()
+
 import multiprocessing as mp
+import requests
 
 import json
 from collections import defaultdict, Counter
@@ -163,7 +164,6 @@ def get_extra_genomes(d_extra_genomes):
     db_gtdb = GtdbSession()
 
     # Get all species that do not belong to those that exist in the tree
-
     query = sa.select([
         Genome.name,
         MetadataTaxonomy.gtdb_species,
@@ -506,7 +506,7 @@ def update_with_lpsn(d_taxa_to_id):
 
 
 def main():
-    # update_db()
+    update_db()
     update_external_links()
 
 

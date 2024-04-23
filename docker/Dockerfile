@@ -1,5 +1,5 @@
 # https://hub.docker.com/r/nginx/unit
-FROM unit:1.31.1-python3.11
+FROM unit:1.32.1-python3.11
 
 # Install dependencies
 RUN apt update -y -m && \
