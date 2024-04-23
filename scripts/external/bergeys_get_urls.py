@@ -1,3 +1,5 @@
+import requests
+
 if __name__ == '__main__':
     from dotenv import load_dotenv
 
@@ -8,19 +10,36 @@ from api.db.models import DbGtdbTree, GtdbCommonBergeysHtml, GtdbCommonBergeysTa
 
 import os
 import re
+import json
 from collections import defaultdict
 from typing import Dict, Tuple
 import sqlalchemy as sa
 from bs4 import BeautifulSoup
 from tqdm import tqdm
+import sys
+CURL_EXAMPLE = '/tmp/curl_test.sh'
+CURL_ALL = '/tmp/curl_bergeys.sh'
+CURL_OUTPUT = '/tmp/curl_results.txt'
 
 """
 Requirements:
 
 1. Navigate to the website https://onlinelibrary.wiley.com/browse/book/10.1002/9781118960608/toc
 
-2. Run the following Javascript to expand all elements:
+2. Save the page as /tmp/bergeys.html (complete, do not do HTML only)
 
+3. Keep the page open and open the developer console. Go to the "Network" page,
+   then open one of the menu items to find a "listChapters?doi=..." call.
+   Right click it, "Copy cURL" then save it as "/tmp/curl_test.sh"
+
+5. Run the cURL command generated /tmp/bergeys_curl.sh > /tmp/curl_results.txt
+
+6. Re-run the program
+
+
+
+
+OLD below
 
 const classes = document.getElementsByClassName("accordion__control");
 
@@ -82,6 +101,8 @@ PATH_R207_BAC = '/Users/aaron/Desktop/bergeys/bac120_taxonomy_r214.tsv'
 PATH_R207_ARC = '/Users/aaron/Desktop/bergeys/ar53_taxonomy_r214.tsv'
 
 
+RE_SECT_HEADING = re.compile(r'(sectionHeading=[0-9a-z]+)')
+RE_SECT_HEADING_CURL = re.compile(r'SectionHeading: ([0-9a-z]+)]')
 def parse_html_bergeys(content):
     content = content.replace('\n', '')
     soup = BeautifulSoup(content, 'html.parser')
@@ -275,8 +296,115 @@ def purge_bergeys_tables():
     return
 
 
+def read_bergeys_toc_page():
+    # path = input('What is the path to the downloaded HTML page? ')
+    path = '/tmp/bergeys.html'
+    with open(path) as f:
+        soup = BeautifulSoup(f.read(), 'html.parser')
+
+    # Obtain each section
+    sections = list(soup.find_all(class_='accordion__control'))
+
+    # Collect the data-sectionHeading attribute
+    d_section_to_name = dict()
+    d_section_to_tag = dict()
+    for section in sections:
+        api = section.attrs['data-sectionheading']
+        sec_id = section.attrs['id']
+        taxon = section.attrs['title']
+        if sec_id in d_section_to_name:
+            print(f'WARNING duplicate section ID: {sec_id}')
+        if sec_id in d_section_to_tag:
+            print(f'WARNING duplicate section ID: {sec_id}')
+        d_section_to_name[sec_id] = taxon
+        d_section_to_tag[sec_id] = api
+
+    return d_section_to_name, d_section_to_tag
+
+
+def generate_curl_command(ids):
+    # Read the template cURL file
+    lines = list()
+    with open(CURL_EXAMPLE) as f:
+        for line in f.readlines():
+            lines.append(line)
+
+
+    with open(CURL_ALL, 'w') as f:
+        for cur_id in ids:
+            for line in lines:
+                if line.startswith('curl'):
+                    new_line = RE_SECT_HEADING.sub(f'sectionHeading={cur_id}', line)
+                    f.write(new_line)
+                else:
+                    f.write(line)
+            f.write('\nsleep 1\n')
+
+    return
+
+
+def parse_curl_output():
+    with open(CURL_OUTPUT) as f:
+        data = f.read()
+
+    # We need to split each of the lines
+    data = data.replace('{"search":', '\n{"search":')
+    data = [x for x in data.splitlines() if x]
+
+    # Parse each of the lines
+    out = dict()
+    for line in data:
+        line_json = json.loads(line)
+        section_heading = RE_SECT_HEADING_CURL.findall(line_json['search']['searchFeed']['linkTitle'])[0]
+        xslt = line_json['search']['xslt']
+
+        # 71 is the length of a failed response
+        if len(xslt) > 71:
+            out[section_heading] = xslt
+
+    return out
+
+def maybe_regenerate_curl(d_section_id_to_xslt, d_section_to_api_key):
+
+    # Identify any missing sections
+    missing_sections = set(d_section_to_api_key.values()) - set(d_section_id_to_xslt.keys())
+
+    if len(missing_sections) > 0:
+        print(f'Warning: Missing {len(missing_sections):,} sections.')
+        generate_curl_command(missing_sections)
+
+        print(f'Please re-run the cURL command, be careful to append! >>')
+        sys.exit(1)
+
+    return
+
+
+
 def main():
     """Parse Bergey's Manual data."""
+    d_section_to_title, d_section_to_api_key = read_bergeys_toc_page()
+
+    """
+    Step 1. After saving the HTML page, and cURL command generate the single
+    cURL command using this.
+    """
+    # generate_curl_command(d_section_to_api_key.values())
+
+    """
+    Step 2. Parse the output from the cURL command.
+    """
+    d_section_id_to_xslt = parse_curl_output()
+    maybe_regenerate_curl(d_section_id_to_xslt, d_section_to_api_key)
+
+
+
+
+
+
+
+
+
+    return
 
     """
     First pass, clear all content in the Bergeys tables.
@@ -287,7 +415,6 @@ def main():
     Second pass, read the HTML content from disk and store it in the database.
     """
     # insert_html_into_database()
-
 
     """
     Third pass, read the HTML from the database and extract taxonomic info.
