@@ -1,3 +1,23 @@
+# [2.20.0](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.19.0...v2.20.0) (2024-04-23)
+
+
+### Bug Fixes
+
+* **search:** Fix results not sorting. ([7d5228d](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/7d5228d5831cbf378b6fd9aa51732fc403e24d9a))
+* **tree:** Fix duplication of genome accessions. ([3001333](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/30013338e26f0c420de2c8f3c57d90e2241d6c56))
+
+
+### Features
+
+* **fastani:** Increase maximum number of pairwise comparisons to 3000. ([9e491af](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/9e491afb1dd8706b6f62d1c1bb5ab48483bab18a))
+* **R220:** Update for R220. ([d5aa008](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/d5aa008d2878fc13aa8984d9f29ce7ed21f8969e))
+* **R220:** Update for R220. ([19aaa5e](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/19aaa5e8466f2f798e2a8f0ea460be8e86814341))
+
+
+### Performance Improvements
+
+* **advanced:** Update advanced search to use a materialized view. ([30bbacf](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/30bbacf8eeb8d0b2fddc01f6ccee5969b75623d9))
+
 # [2.19.0](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.18.4...v2.19.0) (2024-03-06)
 
 
