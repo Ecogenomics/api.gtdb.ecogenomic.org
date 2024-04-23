@@ -6,7 +6,7 @@ from sqlalchemy import sql
 from sqlalchemy.orm import Session
 
 from api.db.models import GtdbSpeciesClusterCount, GtdbWebTaxonHist, MetadataTaxonomy, \
-    Genome, MetadataNucleotide, MetadataNcbi
+    Genome, MetadataNucleotide, MetadataNcbi, DbGtdbTree
 from api.exceptions import HttpBadRequest, HttpNotFound
 from api.model.graph import GraphHistogramBin
 from api.model.taxon import TaxonDescendants, TaxonSearchResponse, TaxonPreviousReleases, TaxonCard, \
@@ -15,39 +15,37 @@ from api.model.taxon import TaxonDescendants, TaxonSearchResponse, TaxonPrevious
 
 def get_taxon_descendants(taxon: str, db: Session) -> List[TaxonDescendants]:
     """Returns the direct descendants below this taxon."""
+
+    # Get parent info
+    taxon_query = sa.select([DbGtdbTree.id]).where(DbGtdbTree.taxon == taxon)
+    taxon_results = db.execute(taxon_query).fetchall()
+
+    if len(taxon_results) != 1:
+        raise HttpBadRequest(f'Taxon {taxon} not found')
+    parent_id = taxon_results[0].id
+
     query = sql.text("""
-        SELECT t.taxon,
-               t.total,
-               t.type,
-               t.is_rep,
-               t.type_material,
-               t.n_desc_children,
-               b.url   AS bergeys_url,
-               s.url   AS seqcode_url,
-               l.url   as lpsn_url,
-               n.taxid AS ncbi_taxid
-        FROM gtdb_tree t
-                 LEFT JOIN gtdb_tree_url_bergeys b ON b.id = t.id
-                 LEFT JOIN gtdb_tree_url_lpsn l ON l.id = t.id
-                 LEFT JOIN gtdb_tree_url_ncbi n ON n.id = t.id
-                 LEFT JOIN gtdb_tree_url_seqcode s ON s.id = t.id
-                 INNER JOIN (SELECT t2.id, 0 AS order_id
-                             FROM gtdb_tree t2
-                             WHERE t2.taxon = :taxon
-                               AND t2.type = 'genome'
-        
-                             UNION
-        
-                             SELECT c2.child_id AS id, c2.order_id
-                             FROM gtdb_tree t3
-                                      INNER JOIN gtdb_tree_children c2 ON c2.parent_id = t3.id
-                             WHERE t3.taxon = :taxon) AS subq ON subq.id = t.id
-        ORDER BY subq.order_id;
+            SELECT t.taxon,
+                   t.total,
+                   t.type,
+                   t.is_rep,
+                   t.type_material,
+                   t.n_desc_children,
+                   b.url   AS bergeys_url,
+                   s.url   AS seqcode_url,
+                   l.url   as lpsn_url,
+                   n.taxid AS ncbi_taxid
+            FROM gtdb_tree t
+                     LEFT JOIN gtdb_tree_url_bergeys b ON b.id = t.id
+                     LEFT JOIN gtdb_tree_url_lpsn l ON l.id = t.id
+                     LEFT JOIN gtdb_tree_url_ncbi n ON n.id = t.id
+                     LEFT JOIN gtdb_tree_url_seqcode s ON s.id = t.id
+                     INNER JOIN gtdb_tree_children gtc ON gtc.child_id = t.id
+            WHERE gtc.parent_id = :parent_id
+            ORDER BY gtc.order_id;
     """)
 
-    results = db.execute(query, {'taxon': taxon}).fetchall()
-    if not results or len(results) == 0:
-        raise HttpNotFound(f'Taxon not found: {taxon}')
+    results = db.execute(query, {'parent_id': parent_id}).fetchall()
 
     for result in results:
         yield TaxonDescendants(taxon=result.taxon,
