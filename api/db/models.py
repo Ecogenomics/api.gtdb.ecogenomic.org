@@ -1,3 +1,5 @@
+import datetime
+
 from sqlalchemy import CHAR, Boolean, Column, Date, DateTime, Float, \
     ForeignKey, Integer, Text, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import DOUBLE_PRECISION, BIGINT
@@ -706,8 +708,19 @@ class GtdbCommonLpsnHtmlSynonyms(GtdbCommonBase):
 class GtdbCommonSeqCodeHtml(GtdbCommonBase):
     __tablename__ = 'seqcode_html'
     id = Column(Integer, primary_key=True)
-    name = Column(Text)
-    rank = Column(Text)
+    updated = Column(TIMESTAMP, nullable=False, default=datetime.datetime.utcnow)
+    to_process = Column(Boolean, nullable=False)
+    etag = Column(Text, nullable=True)
+    name = Column(Text, nullable=True)
+    rank = Column(Text, nullable=True)
+    status_name = Column(Text, nullable=True)
+    syllabification = Column(Text, nullable=True)
+    priority_date = Column(TIMESTAMP, nullable=True)
+    formal_styling_raw = Column(Text, nullable=True)
+    formal_styling_html = Column(Text, nullable=True)
+    etymology = Column(Text, nullable=True)
+    sc_created_at = Column(TIMESTAMP, nullable=True)
+    sc_updated_at = Column(TIMESTAMP, nullable=True)
     domain_id = Column(ForeignKey('seqcode_html.id'), nullable=True)
     phylum_id = Column(ForeignKey('seqcode_html.id'), nullable=True)
     class_id = Column(ForeignKey('seqcode_html.id'), nullable=True)
@@ -715,6 +728,30 @@ class GtdbCommonSeqCodeHtml(GtdbCommonBase):
     family_id = Column(ForeignKey('seqcode_html.id'), nullable=True)
     genus_id = Column(ForeignKey('seqcode_html.id'), nullable=True)
     species_id = Column(ForeignKey('seqcode_html.id'), nullable=True)
+    corrigendum_by_id = Column(Integer, nullable=True)
+    corrigendum_by_citation = Column(Text, nullable=True)
+    corrigendum_from = Column(Text, nullable=True)
+    content = Column(Text, nullable=True)
+    description_raw = Column(Text, nullable=True)
+    proposed_by_id = Column(Text, nullable=True)
+    proposed_by_citation = Column(Text, nullable=True)
+    notes_raw = Column(Text, nullable=True)
+    notes_html = Column(Text, nullable=True)
+
+
+class GtdbCommonSeqCodeHtmlChildren(GtdbCommonBase):
+    __tablename__ = 'seqcode_html_children'
+    parent_id = Column(Integer, primary_key=True)
+    child_id = Column(Integer, primary_key=True)
+
+
+class GtdbCommonSeqCodeHtmlQcWarnings(GtdbCommonBase):
+    __tablename__ = 'seqcode_html_qc_warnings'
+    id = Column(Integer, primary_key=True)
+    sc_id = Column(ForeignKey('seqcode_html.id'), nullable=False)
+    can_approve = Column(Boolean, nullable=True)
+    text = Column(Text, nullable=False)
+    rules = Column(Text, nullable=True)
 
 
 class GtdbCommonNcbiCitation(GtdbCommonBase):
