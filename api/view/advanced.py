@@ -1,4 +1,3 @@
-from typing import List
 from typing import Literal
 
 from fastapi import APIRouter
@@ -17,33 +16,52 @@ from api.util.io import rows_to_delim
 router = APIRouter(prefix='/advanced', tags=['advanced'])
 
 
-@router.get('/options', response_model=List[AdvancedSearchOptionsResponse],
-            summary='Return a list of all valid options in the advanced search.')
+@router.get(
+    '/options',
+    response_model=list[AdvancedSearchOptionsResponse],
+    summary='Return a list of all valid options in the advanced search.'
+)
 def v_advanced_get_options():
     return get_advanced_search_options()
 
 
-@router.get('/operators', response_model=List[AdvancedSearchOperatorResponse],
-            summary='Return a list of all valid operators in the advanced search.')
+@router.get(
+    '/operators',
+    response_model=list[AdvancedSearchOperatorResponse],
+    summary='Return a list of all valid operators in the advanced search.'
+)
 def v_advanced_get_operators():
     return get_advanced_search_operators()
 
 
-@router.get('/columns', response_model=List[AdvancedSearchColumnResponse],
-            summary='Return a list of all valid columns in the advanced search.')
+@router.get(
+    '/columns',
+    response_model=list[AdvancedSearchColumnResponse],
+    summary='Return a list of all valid columns in the advanced search.'
+)
 def v_advanced_get_columns():
     return get_advanced_search_columns()
 
 
-@router.get('/search', response_model=AdvancedSearchResult,
-            summary='Return the result of an advanced search query.')
+@router.get(
+    '/search',
+    response_model=AdvancedSearchResult,
+    summary='Return the result of an advanced search query.'
+)
 def v_advanced_get_search(request: Request, db: Session = Depends(get_gtdb_db)):
     return get_advanced_search(query=dict(request.query_params), db=db)
 
 
-@router.get('/search/download/{fmt}', response_class=StreamingResponse,
-            summary='Download the result of a Advanced Search query in delimited format.')
-def get_by_id_download(fmt: Literal['csv', 'tsv'], request: Request, db: Session = Depends(get_gtdb_db)):
+@router.get(
+    '/search/download/{fmt}',
+    response_class=StreamingResponse,
+    summary='Download the result of a Advanced Search query in delimited format.'
+)
+def get_by_id_download(
+        fmt: Literal['csv', 'tsv'],
+        request: Request,
+        db: Session = Depends(get_gtdb_db)
+):
     adv_result = get_advanced_search(query=dict(request.query_params), db=db)
     rows = adv_search_query_to_rows(adv_result)
     stream = rows_to_delim(rows, delim=',' if fmt == 'csv' else '\t')
@@ -52,10 +70,20 @@ def get_by_id_download(fmt: Literal['csv', 'tsv'], request: Request, db: Session
     return response
 
 
-@router.get('/search/download-genomes', response_class=StreamingResponse, summary='Download a shell script to download genomes from Advanced Search results.')
+@router.get(
+    '/search/download-genomes',
+    response_class=StreamingResponse,
+    summary='Download a shell script to download genomes from Advanced Search results.'
+)
 def v_download_genomes_from_adv(
-        method: Literal['datasets', 'curl'], request: Request, db: Session = Depends(get_gtdb_db),
-        gff: bool = False, rna: bool = False, cds: bool = False, protein: bool = False, genome: bool = True,
+        method: Literal['datasets', 'curl'],
+        request: Request,
+        db: Session = Depends(get_gtdb_db),
+        gff: bool = False,
+        rna: bool = False,
+        cds: bool = False,
+        protein: bool = False,
+        genome: bool = True,
         seqReport: bool = False
 ):
     adv_result = get_advanced_search(query=dict(request.query_params), db=db)
@@ -80,7 +108,8 @@ def v_download_genomes_from_adv(
         if method == 'datasets':
             lines.append(f'datasets download genome accession {gid} --include {",".join(options)} --filename {gid}.zip')
         else:
-            lines.append(f'curl -OJX GET "https://api.ncbi.nlm.nih.gov/datasets/v2alpha/genome/accession/{gid}/download?include_annotation_type={",".join(options)}&filename={gid}.zip" -H "Accept: application/zip"')
+            lines.append(
+                f'curl -OJX GET "https://api.ncbi.nlm.nih.gov/datasets/v2alpha/genome/accession/{gid}/download?include_annotation_type={",".join(options)}&filename={gid}.zip" -H "Accept: application/zip"')
 
     stream = '\n'.join(lines) + '\n'
     response = StreamingResponse(iter([stream]), media_type="text/csv")

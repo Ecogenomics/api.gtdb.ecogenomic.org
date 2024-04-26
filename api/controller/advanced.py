@@ -1,61 +1,29 @@
 import re
-from typing import List, Dict, Any, Tuple
+from typing import Dict, Any
 
 from sqlalchemy import sql
 from sqlalchemy.orm import Session
 
 from api.exceptions import HttpBadRequest
-from api.model.advanced import AdvancedSearchOptionsResponse, AdvancedSearchOperator, AdvancedSearchDataTypeResponse, \
-    AdvancedDataType, AdvancedSearchOperatorResponse, AdvancedSearchColumn, AdvancedSearchColumnResponse, \
-    AdvancedSearchOption, AdvancedSearchResult, AdvancedSearchHeader
+from api.model.advanced import (
+    AdvancedSearchOptionsResponse,
+    AdvancedSearchOperator,
+    AdvancedSearchDataTypeResponse,
+    AdvancedDataType,
+    AdvancedSearchOperatorResponse,
+    AdvancedSearchColumn,
+    AdvancedSearchColumnResponse,
+    AdvancedSearchOption,
+    AdvancedSearchResult,
+    AdvancedSearchHeader
+)
 from api.util.url import base64url_to_str
 
+# Pre-compiled Regex
+RE_GROUPS = re.compile(r'^(\d+)~(\d+)~?(.+)?$')
+RE_DIGIT = re.compile(r'(\d+)')
 
-def get_advanced_search_options() -> List[AdvancedSearchOptionsResponse]:
-    for operator in AdvancedSearchOption:
-        yield AdvancedSearchOptionsResponse(id=operator.id, display=operator.display)
-
-
-def get_advanced_search_data_types() -> List[AdvancedSearchDataTypeResponse]:
-    for dt in AdvancedDataType:
-        yield AdvancedSearchDataTypeResponse(name=dt.name, value=dt.value)
-
-
-def get_advanced_search_operators() -> List[AdvancedSearchOperatorResponse]:
-    for op in AdvancedSearchOperator:
-        yield AdvancedSearchOperatorResponse(id=op.id, display=op.display, dataType=op.dt.value)
-
-
-def get_advanced_search_columns() -> List[AdvancedSearchColumnResponse]:
-    for col in AdvancedSearchColumn:
-        if col.options:
-            cur_option = [AdvancedSearchOptionsResponse(id=x.id, display=x.display)
-                          for x in col.options]
-        else:
-            cur_option = None
-        yield AdvancedSearchColumnResponse(id=col.id,
-                                           display=col.display,
-                                           dataType=col.dt.value,
-                                           options=cur_option,
-                                           group=col.group)
-
-
-# helper functions
-def parse_groups(groups: Dict[int, str]):
-    out = dict()
-    re_group = re.compile(r'^(\d+)~(\d+)~?(.+)?$')
-    for i, group in groups.items():
-        re_hits = re_group.search(group)
-        cur_col_id = int(re_hits.group(1))
-        cur_op_id = int(re_hits.group(2))
-        cur_col = [x for x in AdvancedSearchColumn if x.id == cur_col_id][0]
-        cur_op = [x for x in AdvancedSearchOperator if x.id == cur_op_id][0]
-        if cur_col.dt != cur_op.dt:
-            raise ValueError('Search operator does not match column.')
-        out[i] = (cur_col, cur_op, re_hits.group(3))
-    return out
-
-
+# Configuration
 BASE_COLS = (
     AdvancedSearchColumn.ACCESSION,
     AdvancedSearchColumn.ORGANISM_NAME,
@@ -66,8 +34,65 @@ BASE_COLS = (
 )
 
 
-def get_method(expression, groups: Dict[int, Tuple[AdvancedSearchColumn, AdvancedSearchOperator, str]],
-               db):
+def get_advanced_search_options() -> list[AdvancedSearchOptionsResponse]:
+    out = list()
+    for operator in AdvancedSearchOption:
+        out.append(AdvancedSearchOptionsResponse(id=operator.id, display=operator.display))
+    return out
+
+
+def get_advanced_search_data_types() -> list[AdvancedSearchDataTypeResponse]:
+    out = list()
+    for dt in AdvancedDataType:
+        out.append(AdvancedSearchDataTypeResponse(name=dt.name, value=dt.value))
+    return out
+
+
+def get_advanced_search_operators() -> list[AdvancedSearchOperatorResponse]:
+    out = list()
+    for op in AdvancedSearchOperator:
+        out.append(AdvancedSearchOperatorResponse(id=op.id, display=op.display, dataType=op.dt.value))
+    return out
+
+
+def get_advanced_search_columns() -> list[AdvancedSearchColumnResponse]:
+    out = list()
+    for col in AdvancedSearchColumn:
+        if col.options:
+            cur_option = [AdvancedSearchOptionsResponse(id=x.id, display=x.display)
+                          for x in col.options]
+        else:
+            cur_option = None
+        out.append(AdvancedSearchColumnResponse(
+            id=col.id,
+            display=col.display,
+            dataType=col.dt.value,
+            options=cur_option,
+            group=col.group
+        ))
+    return out
+
+
+# helper functions
+def parse_groups(groups: Dict[int, str]) -> dict[int, tuple[AdvancedSearchColumn, AdvancedSearchOperator, str]]:
+    out = dict()
+    for i, group in groups.items():
+        re_hits = RE_GROUPS.search(group)
+        cur_col_id = int(re_hits.group(1))
+        cur_op_id = int(re_hits.group(2))
+        cur_col = [x for x in AdvancedSearchColumn if x.id == cur_col_id][0]
+        cur_op = [x for x in AdvancedSearchOperator if x.id == cur_op_id][0]
+        if cur_col.dt != cur_op.dt:
+            raise ValueError('Search operator does not match column.')
+        out[i] = (cur_col, cur_op, re_hits.group(3))
+    return out
+
+
+def get_method(
+        expression,
+        groups: dict[int, tuple[AdvancedSearchColumn, AdvancedSearchOperator, str]],
+        db
+):
     mv_prefix = 'mv'
 
     # Set the operators
@@ -109,7 +134,7 @@ def get_method(expression, groups: Dict[int, Tuple[AdvancedSearchColumn, Advance
     # Replace the groups at once, otherwise values that contain ints could override.
     list_query = list()
     previous_idx = 0
-    for hit in re.finditer(r'(\d+)', expression):
+    for hit in RE_DIGIT.finditer(expression):
         idx_from, idx_to = hit.span()
         cur_val = int(hit.group())
         list_query.append(expression[previous_idx:idx_from])
@@ -164,7 +189,7 @@ def get_advanced_search(query: Dict[str, Any], db: Session) -> AdvancedSearchRes
     expression = base64url_to_str(expression)
 
     # Get and validate the groups
-    groups = re.findall(r'(\d+)', expression)
+    groups = RE_DIGIT.findall(expression)
     if not groups or len(groups) == 0:
         raise HttpBadRequest('No search groups detected.')
     try:
