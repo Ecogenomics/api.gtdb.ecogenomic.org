@@ -26,7 +26,7 @@ async def gtdb(db: Session = Depends(get_gtdb_db), db_web: Session = Depends(get
 
     # Load the genome pages for the sitemap
     all_species = v_species_all(db)
-    all_genomes = await v_genomes_all(db)
+    all_genomes = v_genomes_all(db)
     all_taxa = v_get_all_taxa(db_web)
 
     # Generate the species pages
