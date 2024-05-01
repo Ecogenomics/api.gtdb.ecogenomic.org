@@ -1,3 +1,10 @@
+## [2.20.1](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.20.0...v2.20.1) (2024-05-01)
+
+
+### Bug Fixes
+
+* **sitemap:** Remove async call to sync function. ([f02a0c0](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/f02a0c08935ebc72bab6cab4950a06380be390c9))
+
 # [2.20.0](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.19.0...v2.20.0) (2024-04-23)
 
 
