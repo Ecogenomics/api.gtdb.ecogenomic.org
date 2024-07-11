@@ -1,3 +1,10 @@
+## [2.20.2](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.20.1...v2.20.2) (2024-07-11)
+
+
+### Bug Fixes
+
+* **fastapi:** Increase number of procs. ([875bfc3](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/875bfc3e41ca5af61a1eeb7b79be7061b33df474))
+
 ## [2.20.1](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.20.0...v2.20.1) (2024-05-01)
 
 
