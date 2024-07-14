@@ -1,3 +1,10 @@
+## [2.20.3](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.20.2...v2.20.3) (2024-07-14)
+
+
+### Bug Fixes
+
+* **g__Dietzia:** Tree view incorrectly displayed s__Dietzia cinnamea as type of genus. Bumping to refresh cache. ([412999b](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/412999bce152610c1fcb9e319fd6f00c562917b6))
+
 ## [2.20.2](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.20.1...v2.20.2) (2024-07-11)
 
 
