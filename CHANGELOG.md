@@ -1,3 +1,10 @@
+## [2.20.4](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.20.3...v2.20.4) (2024-09-03)
+
+
+### Bug Fixes
+
+* **ncbi_type_material:** Update type material designation in general search. ([f4650c6](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/f4650c611f964799e99791a7cefef8d6ae75654d))
+
 ## [2.20.3](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.20.2...v2.20.3) (2024-07-14)
 
 
