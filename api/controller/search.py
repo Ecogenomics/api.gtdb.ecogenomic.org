@@ -1,9 +1,9 @@
 import re
 import shlex
+from typing import List
 
 import sqlalchemy as sa
 from sqlalchemy.orm import Session
-from typing import List
 
 from api.db.models import GtdbSearchMtView
 from api.exceptions import HttpBadRequest
@@ -83,7 +83,7 @@ def search_gtdb(request: SearchGtdbRequest, db: Session) -> SearchGtdbResponse:
                    GtdbSearchMtView.ncbi_genbank_assembly_accession,
                    GtdbSearchMtView.ncbi_type_material_designation,
                    GtdbSearchMtView.gtdb_representative]).
-            where(sa.or_(*where_clause))
+        where(sa.or_(*where_clause))
     )
 
     # Filters
@@ -152,18 +152,26 @@ def search_gtdb(request: SearchGtdbRequest, db: Session) -> SearchGtdbResponse:
     #     if len(list(survey_hits)) > 0:
     #         out_survey = request.search  # TODO: ??
 
+    ncbi_type_material_categories = frozenset({
+        'assembly from type material',
+        'assembly designated as neotype',
+        'assembly designated as reftype',
+        'assembly designated as neotype',
+    })
+
     # Apply filters and create objects
     out_rows = list()
     for hit in all_rows:
         out_rows.append(
-            SearchGtdbRow(gid=hit.id_at_source,
-                          accession=hit.id_at_source,
-                          ncbiOrgName=hit.ncbi_organism_name,
-                          ncbiTaxonomy=hit.ncbi_taxonomy,
-                          gtdbTaxonomy=hit.gtdb_taxonomy,
-                          isGtdbSpeciesRep=hit.gtdb_representative is True,
-                          isNcbiTypeMaterial=hit.ncbi_type_material_designation is not None
-                          )
+            SearchGtdbRow(
+                gid=hit.id_at_source,
+                accession=hit.id_at_source,
+                ncbiOrgName=hit.ncbi_organism_name,
+                ncbiTaxonomy=hit.ncbi_taxonomy,
+                gtdbTaxonomy=hit.gtdb_taxonomy,
+                isGtdbSpeciesRep=hit.gtdb_representative is True,
+                isNcbiTypeMaterial=hit.ncbi_type_material_designation in ncbi_type_material_categories
+            )
         )
 
     return SearchGtdbResponse(rows=out_rows, totalRows=total_rows)
