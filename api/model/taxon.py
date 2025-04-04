@@ -15,6 +15,7 @@ class TaxonDescendants(BaseModel):
     seqcodeUrl: Optional[str] = Field(None)
     lpsnUrl: Optional[str] = Field(None)
     ncbiTaxId: Optional[int] = Field(None)
+    sandpiperUrl: Optional[str] = Field(None)
 
 
 class TaxonSearchResponse(BaseModel):

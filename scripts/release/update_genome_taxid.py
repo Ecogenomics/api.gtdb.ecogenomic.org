@@ -224,7 +224,7 @@ def insert_rows(rows):
 
 def main():
     # Confirm this is the correct database
-    # confirm_database_selection()
+    confirm_database_selection()
 
     print('Downloading the NCBI taxdump')
     d_ncbi_data = download_ncbi_taxdump()

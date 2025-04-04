@@ -370,7 +370,8 @@ class MetadataView(GtdbBase):
     ncbi_genome_category = Column(Text)
     ncbi_wgs_formatted = Column(Text)
     ncbi_cds_count = Column(Integer)
-    ncbi_untrustworthy_as_type = Column(Boolean)
+    ncbi_not_used_as_type = Column(Boolean)
+    ncbi_excluded_from_refseq = Column(Text)
     ssu_gg_taxonomy = Column(Text)
     ssu_gg_blast_bitscore = Column(DOUBLE_PRECISION)
     ssu_gg_blast_subject_id = Column(Text)
@@ -559,6 +560,10 @@ class GtdbWebUrlSeqcode(GtdbWebBase):
     id = Column(ForeignKey(DbGtdbTree.id), primary_key=True, nullable=False)
     url = Column(Text, nullable=False)
 
+class GtdbWebUrlSandPiper(GtdbWebBase):
+    __tablename__ = 'gtdb_tree_url_sandpiper'
+    id = Column(ForeignKey(DbGtdbTree.id), primary_key=True, nullable=False)
+    url = Column(Text, nullable=False)
 
 class GtdbWebLpsnUrl(GtdbWebBase):
     __tablename__ = 'lpsn_url'
