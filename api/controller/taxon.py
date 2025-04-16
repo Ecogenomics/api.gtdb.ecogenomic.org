@@ -205,8 +205,8 @@ def results_from_previous_releases(search: str, db: Session, page: Optional[int]
                             UNION ALL
                         SELECT DISTINCT rank_species, release_ver FROM taxon_hist WHERE rank_species ILIKE :arg;""")
     results = db.execute(query, {'arg': search})
-    rank_order_dict = {'R80': 0, 'R83': 1, 'R86.2': 2, 'R89': 3, 'R95': 4, 'R202': 5, 'R207': 6, 'R214': 7, 'R220': 8,
-                       'NCBI': 9}
+    rank_order_dict = {'R80': 0, 'R83': 1, 'R86.2': 2, 'R89': 3, 'R95': 4, 'R202': 5, 'R207': 6, 'R214': 7, 'R220': 8, 'R226': 9,
+                       'NCBI': 10}
 
     # There's a case that exists where the case is slightly different for previous releases.
     # Therefore, if all the keys are the same (ignoring case), and the current release is present
@@ -239,11 +239,11 @@ def results_from_previous_releases(search: str, db: Session, page: Optional[int]
     for rank_name, rank_set in all_hits.items():
 
         # Only interested in previous GTDB releases
-        if 'R220' in rank_set:
+        if 'R226' in rank_set:
             continue
 
         # Ignore those which only appear in NCBI
-        if len(rank_set - {'NCBI', 'R220'}) == 0:
+        if len(rank_set - {'NCBI', 'R226'}) == 0:
             continue
 
         if rank_name not in out:
