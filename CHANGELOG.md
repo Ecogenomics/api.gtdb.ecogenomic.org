@@ -1,3 +1,10 @@
+## [2.21.1](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.21.0...v2.21.1) (2025-04-16)
+
+
+### Bug Fixes
+
+* **taxon:** Add R226 ([400c969](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/400c9695a696038e07c62fbb36537355236954fa))
+
 # [2.21.0](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.20.4...v2.21.0) (2025-04-16)
 
 
