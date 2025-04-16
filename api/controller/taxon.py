@@ -34,12 +34,14 @@ def get_taxon_descendants(taxon: str, db: Session) -> List[TaxonDescendants]:
                    b.url   AS bergeys_url,
                    s.url   AS seqcode_url,
                    l.url   as lpsn_url,
-                   n.taxid AS ncbi_taxid
+                   n.taxid AS ncbi_taxid,
+                   sp.url as sandpiper_url
             FROM gtdb_tree t
                      LEFT JOIN gtdb_tree_url_bergeys b ON b.id = t.id
                      LEFT JOIN gtdb_tree_url_lpsn l ON l.id = t.id
                      LEFT JOIN gtdb_tree_url_ncbi n ON n.id = t.id
                      LEFT JOIN gtdb_tree_url_seqcode s ON s.id = t.id
+                     LEFT JOIN gtdb_tree_url_sandpiper sp ON sp.id = t.id
                      INNER JOIN gtdb_tree_children gtc ON gtc.child_id = t.id
             WHERE gtc.parent_id = :parent_id
             ORDER BY gtc.order_id;
@@ -48,16 +50,19 @@ def get_taxon_descendants(taxon: str, db: Session) -> List[TaxonDescendants]:
     results = db.execute(query, {'parent_id': parent_id}).fetchall()
 
     for result in results:
-        yield TaxonDescendants(taxon=result.taxon,
-                               total=result.total,
-                               isGenome=result.type == 'genome',
-                               isRep=result.is_rep,
-                               typeMaterial=result.type_material,
-                               nDescChildren=result.n_desc_children,
-                               bergeysUrl=result.bergeys_url,
-                               seqcodeUrl=result.seqcode_url,
-                               lpsnUrl=result.lpsn_url,
-                               ncbiTaxId=result.ncbi_taxid)
+        yield TaxonDescendants(
+            taxon=result.taxon,
+            total=result.total,
+            isGenome=result.type == 'genome',
+            isRep=result.is_rep,
+            typeMaterial=result.type_material,
+            nDescChildren=result.n_desc_children,
+            bergeysUrl=result.bergeys_url,
+            seqcodeUrl=result.seqcode_url,
+            lpsnUrl=result.lpsn_url,
+            ncbiTaxId=result.ncbi_taxid,
+            sandpiperUrl=result.sandpiper_url
+        )
 
 
 def search_for_taxon(taxon: str, limit: Optional[int], db: Session) -> TaxonSearchResponse:

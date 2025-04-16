@@ -103,5 +103,5 @@ FASTANI_JOB_RETRY = Retry(max=3)
 FASTANI_GENOME_DIR = os.environ.get('FASTANI_GENOME_DIR')
 
 # GTDB releases
-GTDB_RELEASES = ('R80', 'R83', 'R86.2', 'R89', 'R95', 'R202', 'R207', 'R214', 'R220', 'NCBI')
+GTDB_RELEASES = ('R80', 'R83', 'R86.2', 'R89', 'R95', 'R202', 'R207', 'R214', 'R220', 'R226', 'NCBI')
 

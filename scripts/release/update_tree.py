@@ -1,3 +1,5 @@
+import os
+
 if __name__ == '__main__':
     from dotenv import load_dotenv
 
@@ -11,11 +13,13 @@ import sqlalchemy as sa
 from tqdm import tqdm
 
 from api.db import GtdbSession, GtdbWebSession
-from api.db.models import DbGtdbTree
+from api.db.models import DbGtdbTree, GtdbWebUrlBergeys, GtdbWebUrlSeqcode, GtdbWebUrlLpsn, GtdbWebUrlNcbi, \
+    GtdbWebUrlSandPiper
 from api.db.models import MetadataTaxonomy, Genome
 
 # Configuration
-JSON_PATH = '/tmp/genome_taxonomy_r220_count.json'
+JSON_PATH = '/private/tmp/release226/genome_taxonomy_r226_count.json'
+OUT_DIR = '/tmp/release226_tree'
 
 # Globals
 EXPECTED = {'name', 'type', 'children', 'countgen'}
@@ -240,15 +244,24 @@ def get_extra_genomes(rows_parent, rows_children, d_extra_genomes):
 
     return out_parent, out_children
 
+
 def get_previous_release_annotations():
     db = GtdbWebSession()
-    query = sa.select([
-        DbGtdbTree.taxon,
-        DbGtdbTree.bergeys_url,
-        DbGtdbTree.seqcode_url,
-        DbGtdbTree.lpsn_url,
-        DbGtdbTree.ncbi_taxid
+    query = (sa.select([
+        DbGtdbTree.taxon.label('taxon'),
+        GtdbWebUrlBergeys.url.label('bergeys_url'),
+        GtdbWebUrlSeqcode.url.label('seqcode_url'),
+        GtdbWebUrlLpsn.url.label('lpsn_url'),
+        GtdbWebUrlNcbi.taxid.label('ncbi_taxid'),
+        GtdbWebUrlSandPiper.url.label('sandpiper_url')
     ])
+             .outerjoin(GtdbWebUrlBergeys, GtdbWebUrlBergeys.id == DbGtdbTree.id)
+             .outerjoin(GtdbWebUrlSeqcode, GtdbWebUrlSeqcode.id == DbGtdbTree.id)
+             .outerjoin(GtdbWebUrlLpsn, GtdbWebUrlLpsn.id == DbGtdbTree.id)
+             .outerjoin(GtdbWebUrlNcbi, GtdbWebUrlNcbi.id == DbGtdbTree.id)
+             .outerjoin(GtdbWebUrlSandPiper, GtdbWebUrlSandPiper.id == DbGtdbTree.id)
+             )
+
     results = db.execute(query).fetchall()
 
     out = defaultdict(dict)
@@ -261,16 +274,20 @@ def get_previous_release_annotations():
             out[row.taxon]['lpsn_url'] = row.lpsn_url
         if row.ncbi_taxid is not None:
             out[row.taxon]['ncbi_taxid'] = row.ncbi_taxid
+        if row.sandpiper_url is not None:
+            out[row.taxon]['sandpiper_url'] = row.sandpiper_url
     return out
 
+
 def create_import_tsv(rows_parent, rows_children, d_taxon_to_annotations):
-    with open('/tmp/gtdb_tree.tsv', 'w') as f:
+    os.makedirs(OUT_DIR, exist_ok=True)
+
+    with open(os.path.join(OUT_DIR, 'gtdb_tree.tsv'), 'w') as f:
         f.write('\t'.join((
             'id', 'taxon', 'total', 'type', 'is_rep', 'type_material',
-            'n_desc_children', 'bergeys_url', 'seqcode_url', 'lpsn_url', 'ncbi_taxid'
+            'n_desc_children'
         )) + '\n')
         for row in rows_parent:
-            cur_anno = d_taxon_to_annotations.get(row['taxon'], dict())
             cur_row = [
                 row['id'],
                 row['taxon'],
@@ -279,15 +296,57 @@ def create_import_tsv(rows_parent, rows_children, d_taxon_to_annotations):
                 row['is_rep'],
                 row['type_material'],
                 row['n_desc_children'],
-                cur_anno.get('bergeys_url'),
-                cur_anno.get('seqcode_url'),
-                cur_anno.get('lpsn_url'),
-                cur_anno.get('ncbi_taxid')
             ]
             cur_row = list(map(lambda x: x if x is not None else '', cur_row))
             cur_row = list(map(str, cur_row))
             f.write('\t'.join(cur_row) + '\n')
-    with open('/tmp/gtdb_tree_children.tsv', 'w') as f:
+
+    with open(os.path.join(OUT_DIR, 'bergeys.tsv'), 'w') as f:
+        f.write('\t'.join(('id', 'url')) + '\n')
+        for row in rows_parent:
+            cur_anno = d_taxon_to_annotations.get(row['taxon'], dict())
+            cur_anno = cur_anno.get('bergeys_url')
+            if cur_anno is not None:
+                cur_id = row['id']
+                f.write(f'{cur_id}\t{cur_anno}\n')
+
+    with open(os.path.join(OUT_DIR, 'seqcode.tsv'), 'w') as f:
+        f.write('\t'.join(('id', 'url')) + '\n')
+        for row in rows_parent:
+            cur_anno = d_taxon_to_annotations.get(row['taxon'], dict())
+            cur_anno = cur_anno.get('seqcode_url')
+            if cur_anno is not None:
+                cur_id = row['id']
+                f.write(f'{cur_id}\t{cur_anno}\n')
+
+    with open(os.path.join(OUT_DIR, 'lpsn.tsv'), 'w') as f:
+        f.write('\t'.join(('id', 'url')) + '\n')
+        for row in rows_parent:
+            cur_anno = d_taxon_to_annotations.get(row['taxon'], dict())
+            cur_anno = cur_anno.get('lpsn_url')
+            if cur_anno is not None:
+                cur_id = row['id']
+                f.write(f'{cur_id}\t{cur_anno}\n')
+
+    with open(os.path.join(OUT_DIR, 'ncbi.tsv'), 'w') as f:
+        f.write('\t'.join(('id', 'taxid')) + '\n')
+        for row in rows_parent:
+            cur_anno = d_taxon_to_annotations.get(row['taxon'], dict())
+            cur_anno = cur_anno.get('ncbi_taxid')
+            if cur_anno is not None:
+                cur_id = row['id']
+                f.write(f'{cur_id}\t{cur_anno}\n')
+
+    with open(os.path.join(OUT_DIR, 'sandpiper.tsv'), 'w') as f:
+        f.write('\t'.join(('id', 'url')) + '\n')
+        for row in rows_parent:
+            cur_anno = d_taxon_to_annotations.get(row['taxon'], dict())
+            cur_anno = cur_anno.get('sandpiper_url')
+            if cur_anno is not None:
+                cur_id = row['id']
+                f.write(f'{cur_id}\t{cur_anno}\n')
+
+    with open(os.path.join(OUT_DIR, 'gtdb_tree_children.tsv'), 'w') as f:
         f.write('\t'.join(('parent_id', 'child_id', 'order_id')) + '\n')
         for row in rows_children:
             cur_row = [
