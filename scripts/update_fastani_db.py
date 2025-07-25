@@ -212,13 +212,10 @@ def download_genomes_mp(queue):
 
     error_results = [r for r in results if not r[3]]
     if len(error_results) > 0:
-        temp_file_path = '/tmp/failed_genomes.txt'
-        log(f'WARNING: {len(error_results):,} genomes failed to download, errors will be written to {temp_file_path}')
-        with open(temp_file_path, 'w') as f:
-            f.write('accession\tmd5\tftp_path\terror_message\n')
-            for r in error_results:
-                f.write(f'{r[0]}\t{r[1]}\t{r[2]}\t{r[4]}\n')
-
+        log(f'WARNING: {len(error_results):,} genomes failed to download:')
+        print('accession\tmd5\tftp_path\terror_message')
+        for r in error_results:
+            print(f'{r[0]}\t{r[1]}\t{r[2]}\t{r[4]}')
     return results
 
 
