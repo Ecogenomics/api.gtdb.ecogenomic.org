@@ -28,7 +28,7 @@ CHUNK_SIZE_DOWNLOAD = 100
 if DEBUG:
     CHUNK_SIZE_DOWNLOAD = 2
 
-TARGET_DIR = '/mnt/ncbi_genomes/ncbi'
+TARGET_DIR = '/mnt/ncbi-genomes/ncbi'
 if DEBUG:
     TARGET_DIR = '/tmp/genomes'
 
