@@ -106,8 +106,8 @@ def download_file_worker(job):
         fna_url = os.path.join(root_url, target_url_basename)
 
         # Stop processing if it's already been downloaded
-        if os.path.isfile(target_path):
-            return accession, None, root_url, False, 'Existing file found'
+        # if os.path.isfile(target_path):
+        #     return accession, None, root_url, False, 'Existing file found'
 
         # Download the FNA
         start_time = time.time()
@@ -206,7 +206,7 @@ def download_genomes_mp(queue):
 
             # log('Updating database with downloaded genomes...')
             valid_results = [{
-                'accession': r[0],
+                'name': r[0],
                 'fna_gz_md5': r[1],
                 'assembly_url': r[2],
             } for r in results if r[3]]
