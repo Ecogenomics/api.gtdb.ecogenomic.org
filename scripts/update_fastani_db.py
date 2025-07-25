@@ -195,10 +195,10 @@ def insert_genomes_into_db(rows):
 
 
 def download_genomes_mp(queue):
-    results = list()
     with tqdm(total=len(queue), miniters=1) as pbar:
         for i in range(0, len(queue), CHUNK_SIZE_DOWNLOAD):
             queue_chunk = queue[i:i + CHUNK_SIZE_DOWNLOAD]
+            results = list()
             with mp.Pool(processes=CPUS) as pool:
                 for result in pool.imap_unordered(download_file_worker, queue_chunk):
                     results.append(result)
