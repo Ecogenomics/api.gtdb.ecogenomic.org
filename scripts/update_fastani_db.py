@@ -188,11 +188,7 @@ def insert_genomes_into_db(rows):
     db = GtdbFastaniSession()
     try:
         for row in rows:
-            db.execute(sa.insert(GtdbFastaniGenome).values({
-                'name': row[0],
-                'fna_gz_md5': row[1],
-                'assembly_url': row[2],
-            }))
+            db.execute(sa.insert(GtdbFastaniGenome).values(row))
         db.commit()
     finally:
         db.close()
