@@ -20,7 +20,7 @@ from tqdm import tqdm
 from api.db import GtdbFastaniSession
 from api.db.models import GtdbFastaniGenome
 
-CPUS = 5
+CPUS = 10
 
 DEBUG = False
 
