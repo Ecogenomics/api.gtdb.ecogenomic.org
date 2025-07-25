@@ -76,6 +76,13 @@ def download_file_with_progress(url, filename):
 
 def download_assembly_file(url, target):
     """Downloads the NCBI assembly summary file."""
+
+    # Check if it's older than 1 day, if so, download it again
+    if os.path.exists(target):
+        file_age = datetime.now() - datetime.fromtimestamp(os.path.getmtime(target))
+        if file_age.days < 1:
+            log(f'Skipping {target} as it is less than 1 day old.')
+            return
     temp_file = f'{target}.dl'
     download_file_with_progress(url, temp_file)
     shutil.move(temp_file, target)
@@ -226,7 +233,7 @@ def main():
     log('Begin updating the FastANI database...')
 
     log('Downloading the NCBI assembly summary files.')
-    download_assembly_files(ignore_existing=DEBUG)
+    download_assembly_files(ignore_existing=False)
 
     log('Reading genomes from the assembly summary files.')
     assembly_genomes = read_assembly_files()
