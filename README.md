@@ -37,3 +37,15 @@ cd /path/to/repository
 docker-compose up
 ```
 
+## Scripts
+
+### Updating the FastANI database
+
+This will ensure that the FastANI database is up to date on disk (i.e. has downloaded all new genomes).
+
+This is done by running the following script within the context of the container:
+
+```shell
+docker exec -it gtdb-api python scripts/update_fastani_db.py
+```
+
