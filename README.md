@@ -48,6 +48,6 @@ This is done by running the following script within the context of the container
 ```shell
 cd /mnt/gtdb-website/repos/api.gtdb.ecogenomic.org
 docker build -t ncbi-db -f docker/ncbi-db/Dockerfile .
-docker run --rm -e PYTHONPATH=/api -v /mnt/ncbi-genomes/ncbi:/mnt/ncbi-genomes/ncbi -it ncbi-db python scripts/update_fastani_db.py
+docker run --rm --network gtdb-stack-config_default -e PYTHONPATH=/api -v /mnt/ncbi-genomes/ncbi:/mnt/ncbi-genomes/ncbi -it ncbi-db python scripts/update_fastani_db.py
 ```
 
