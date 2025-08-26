@@ -5,12 +5,10 @@ if __name__ == '__main__':
 
     load_dotenv()
 
-
 import os
 
-
 from api.db import GtdbWebSession
-from api.db.models import DbGtdbTree
+from api.db.models import DbGtdbTree, GtdbWebUrlNcbi
 import requests
 
 import os
@@ -54,21 +52,30 @@ def read_gtdb_tree_table() -> Dict[str, Dict[str, Tuple[int, str]]]:
     """This is an export of the GTDB tree table from the GTDB website."""
     db = GtdbWebSession()
     try:
-        query = sa.select([DbGtdbTree.id, DbGtdbTree.taxon]).where(DbGtdbTree.type != 'genome').where( DbGtdbTree.taxon != 'root').where(DbGtdbTree.ncbi_taxid == None)
+        # Get the mapping
+        query = sa.select([DbGtdbTree.id, DbGtdbTree.taxon]).where(DbGtdbTree.type != 'genome').where(
+            DbGtdbTree.taxon != 'root')
         results = db.execute(query).fetchall()
+
+        query2 = sa.select([GtdbWebUrlNcbi.id, GtdbWebUrlNcbi.taxid])
+        results2 = db.execute(query2).fetchall()
+        ids_in_db = {row.id: row.taxid for row in results2}
 
         out = defaultdict(dict)
         for row in results:
-            out[row.taxon] = row.id
+            if row.id not in ids_in_db:
+                out[row.taxon] = row.id
         return out
     finally:
         db.close()
+
 
 def download_ncbi_taxdump_md5():
     print('Getting MD5')
     r = requests.get(URL_NCBI_TAXDUMP_MD5)
     content = r.content.decode()
     return content.split(' ')[0]
+
 
 def read_names(path):
     print('Reading names')
@@ -79,6 +86,7 @@ def read_names(path):
             if cols[3] == 'scientific name':
                 out[int(cols[0])] = cols[1]
     return out
+
 
 def read_nodes(path):
     print('Reading nodes')
@@ -93,7 +101,6 @@ def read_nodes(path):
 
 
 def download_ncbi_taxdump():
-
     expected_md5 = download_ncbi_taxdump_md5()
 
     # Download the file
@@ -154,8 +161,8 @@ def remove_suprious_names(d_ncbi_data, d_gtdb_tree):
     print(f'Missing: {n_missing:,}')
     return out
 
-def main():
 
+def main():
     # Read the NCBI taxdump
     d_ncbi_data = download_ncbi_taxdump()
 
@@ -179,8 +186,7 @@ def main():
 
         gtdb_id = d_gtdb_tree[ncbi_taxon_prefixed]
 
-        to_sql_write.append(f'{gtdb_id}\t{ncbi_taxid}\n')
-
+        to_sql_write.append(f'{gtdb_id}\t{ncbi_taxid}')
 
     with open('/tmp/ncbi_import.txt', 'w') as f:
         f.write('\n'.join(to_sql_write))
