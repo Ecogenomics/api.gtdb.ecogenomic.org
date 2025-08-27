@@ -5,42 +5,19 @@ if __name__ == '__main__':
 
     load_dotenv()
 
-import os
-
 from api.db import GtdbWebSession
 from api.db.models import DbGtdbTree, GtdbWebUrlNcbi
 import requests
 
 import os
-import re
 from collections import defaultdict
 from typing import Dict, Tuple
 import sqlalchemy as sa
-from bs4 import BeautifulSoup
 from tqdm import tqdm
 import hashlib
 
-"""
-1. Copy across the following files into a temporary directory:
-
-mkdir -p /tmp/lpsn/files
-zcp /srv/db/gtdb/metadata/release214/lpsn/phylum_list.lst /tmp/lpsn/files/phylum_list.tsv
-zcp /srv/db/gtdb/metadata/release214/lpsn/class_list.lst /tmp/lpsn/files/class_list.tsv
-zcp /srv/db/gtdb/metadata/release214/lpsn/order_list.lst /tmp/lpsn/files/order_list.tsv
-zcp /srv/db/gtdb/metadata/release214/lpsn/family_list.lst /tmp/lpsn/files/family_list.tsv
-zcp /srv/db/gtdb/metadata/release214/lpsn/genus_list.lst /tmp/lpsn/files/genus_list.tsv
-zcp /srv/db/gtdb/metadata/release214/lpsn/species_list.lst /tmp/lpsn/files/species_list.tsv
-
-zcp /srv/db/gtdb/metadata/release214/lpsn/parse_html/all_ranks/full_parsing_parsed.tsv /tmp/lpsn/full_data.tsv
-
-"""
 
 RANKS = ('phylum', 'class', 'order', 'family', 'genus', 'species')
-
-LPSN_FILES = '/tmp/lpsn/files'
-
-PATH_NO_MATCH = '/tmp/lpsn/no_match.tsv'
-PATH_SQL = '/tmp/lpsn/run_me_sql.txt'
 
 URL_NCBI_TAXDUMP = 'https://ftp.ncbi.nih.gov/pub/taxonomy/taxdump.tar.gz'
 URL_NCBI_TAXDUMP_MD5 = 'https://ftp.ncbi.nih.gov/pub/taxonomy/taxdump.tar.gz.md5'
@@ -144,13 +121,15 @@ def download_ncbi_taxdump():
 
 
 def remove_suprious_names(d_ncbi_data, d_gtdb_tree):
-    gtdb_taxa_no_prefix = {x[3:] for x in d_gtdb_tree.keys()}
-    gtdb_taxa_prefix = {x for x in d_gtdb_tree.keys()}
-    gtdb_taxa = gtdb_taxa_prefix.union(gtdb_taxa_no_prefix)
+    # gtdb_taxa_no_prefix = {x[3:] for x in d_gtdb_tree.keys()}
+    gtdb_taxa = {x for x in d_gtdb_tree.keys()}
     out = dict()
     n_matched, n_missing = 0, 0
     for taxid, (rank, name) in tqdm(d_ncbi_data.items(), total=len(d_ncbi_data)):
-        if name in gtdb_taxa:
+        if name.lower().startswith('candidatus '):
+            name = name[len('candidatus '):]
+        ncbi_taxon = f'{rank[0]}__{name}' if rank != 'superkingdom' else f'd__{name}'
+        if ncbi_taxon in gtdb_taxa:
             if name in out:
                 print('??')
             out[name] = (rank, taxid)
