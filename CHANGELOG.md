@@ -1,3 +1,10 @@
+# [2.23.0](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.22.0...v2.23.0) (2025-08-27)
+
+
+### Features
+
+* **tree:** Update tree links to external DBs. ([26f4cac](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/26f4cacfd504b5c034ceb1fb2ed4734ed947e30a))
+
 # [2.22.0](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.21.1...v2.22.0) (2025-08-26)
 
 
