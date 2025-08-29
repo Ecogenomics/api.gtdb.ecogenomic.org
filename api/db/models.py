@@ -560,10 +560,12 @@ class GtdbWebUrlSeqcode(GtdbWebBase):
     id = Column(ForeignKey(DbGtdbTree.id), primary_key=True, nullable=False)
     url = Column(Text, nullable=False)
 
+
 class GtdbWebUrlSandPiper(GtdbWebBase):
     __tablename__ = 'gtdb_tree_url_sandpiper'
     id = Column(ForeignKey(DbGtdbTree.id), primary_key=True, nullable=False)
     url = Column(Text, nullable=False)
+
 
 class GtdbWebLpsnUrl(GtdbWebBase):
     __tablename__ = 'lpsn_url'
@@ -907,3 +909,89 @@ class GtdbFastaniJobReference(GtdbFastaniBase):
     __tablename__ = 'job_reference'
     job_id = Column(ForeignKey('job.id'), primary_key=True, nullable=False)
     genome_id = Column(ForeignKey('genome.id'), primary_key=True, nullable=False)
+
+
+class GtdbSkaniJob(GtdbFastaniBase):
+    __tablename__ = 'job'
+    __table_args__ = {"schema": "skani"}
+    id = Column(Integer, primary_key=True)
+    created = Column(TIMESTAMP, nullable=False)
+    email = Column(Text, nullable=True)
+    param_id = Column(ForeignKey('skani.param.id'), nullable=False)
+
+
+class GtdbSkaniJobEmail(GtdbFastaniBase):
+    __tablename__ = 'job_email'
+    __table_args__ = {"schema": "skani"}
+    job_id = Column(ForeignKey('skani.job.id'), primary_key=True, nullable=False)
+    send = Column(TIMESTAMP, primary_key=True, nullable=False)
+
+
+class GtdbSkaniJobQuery(GtdbFastaniBase):
+    __tablename__ = 'job_query'
+    __table_args__ = {"schema": "skani"}
+    job_id = Column(ForeignKey('skani.job.id'), primary_key=True, nullable=False)
+    genome_id = Column(ForeignKey('public.genome.id'), primary_key=True, nullable=False)
+
+
+class GtdbSkaniJobReference(GtdbFastaniBase):
+    __tablename__ = 'job_reference'
+    __table_args__ = {"schema": "skani"}
+    job_id = Column(ForeignKey('skani.job.id'), primary_key=True, nullable=False)
+    genome_id = Column(ForeignKey('public.genome.id'), primary_key=True, nullable=False)
+
+
+class GtdbSkaniResult(GtdbFastaniBase):
+    __tablename__ = 'result'
+    __table_args__ = {"schema": "skani"}
+    id = Column(Integer, primary_key=True)
+    qry_id = Column(ForeignKey('public.genome.id'), primary_key=False, nullable=False)
+    ref_id = Column(ForeignKey('public.genome.id'), primary_key=False, nullable=False)
+    param_id = Column(ForeignKey('skani.param.id'), primary_key=False, nullable=False)
+    ani = Column(Float, nullable=True)
+    af_qry = Column(Float, nullable=True)
+    af_ref = Column(Float, nullable=True)
+    n_qry_contigs = Column(Integer, nullable=True)
+    n_ref_contigs = Column(Integer, nullable=True)
+    ani_5_percentile = Column(Float, nullable=True)
+    ani_95_percentile = Column(Float, nullable=True)
+    std_dev = Column(Float, nullable=True)
+    ref_90_ctg_lenref_50_ctg_len = Column(Integer, nullable=True)
+    ref_10_ctg_len = Column(Integer, nullable=True)
+    qry_90_ctg_len = Column(Integer, nullable=True)
+    qry_50_ctg_len = Column(Integer, nullable=True)
+    qry_10_ctg_len = Column(Integer, nullable=True)
+    avg_chain_len = Column(Integer, nullable=True)
+    total_bases_recovered = Column(Integer, nullable=True)
+    completed = Column(Boolean, nullable=False)
+    priority = Column(Integer, nullable=False)
+    error = Column(Boolean, nullable=False)
+
+
+class GtdbSkaniParam(GtdbFastaniBase):
+    __tablename__ = 'skani.param'
+    __table_args__ = {"schema": "skani"}
+    id = Column(Integer, primary_key=True)
+    version = Column(ForeignKey('skani.version.id'), nullable=False)
+    min_af = Column(Float, nullable=True)
+    both_min_af = Column(Float, nullable=True)
+    ci = Column(Boolean, nullable=True)
+    fast = Column(Boolean, nullable=True)
+    medium = Column(Boolean, nullable=True)
+    slow = Column(Boolean, nullable=True)
+    small_genomes = Column(Boolean, nullable=True)
+    c = Column(Integer, nullable=True)
+    faster_small = Column(Boolean, nullable=True)
+    m = Column(Integer, nullable=True)
+    median = Column(Boolean, nullable=True)
+    no_learned_ani = Column(Boolean, nullable=True)
+    no_marker_index = Column(Boolean, nullable=True)
+    robust = Column(Boolean, nullable=True)
+    s = Column(Float, nullable=True)
+
+
+class GtdbSkaniVersion(GtdbFastaniBase):
+    __tablename__ = 'skani.version'
+    __table_args__ = {"schema": "skani"}
+    id = Column(Integer, primary_key=True)
+    name = Column(Text, nullable=False)
