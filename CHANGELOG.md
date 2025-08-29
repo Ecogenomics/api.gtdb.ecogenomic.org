@@ -1,3 +1,10 @@
+# [2.24.0](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.23.0...v2.24.0) (2025-08-29)
+
+
+### Features
+
+* **db:** Update version to reflect database changes. ([02d3246](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/02d3246761eb031f36233608297c21509a0a60af))
+
 # [2.23.0](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.22.0...v2.23.0) (2025-08-27)
 
 
