@@ -8,7 +8,7 @@ import os
 
 
 from api.db import GtdbWebSession
-from api.db.models import DbGtdbTree
+# from api.db.models import DbGtdbTree
 
 
 import os

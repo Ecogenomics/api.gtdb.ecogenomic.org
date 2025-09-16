@@ -13,9 +13,9 @@ import sqlalchemy as sa
 from tqdm import tqdm
 
 from api.db import GtdbSession, GtdbWebSession
-from api.db.models import DbGtdbTree, GtdbWebUrlBergeys, GtdbWebUrlSeqcode, GtdbWebUrlLpsn, GtdbWebUrlNcbi, \
-    GtdbWebUrlSandPiper
-from api.db.models import MetadataTaxonomy, Genome
+# from api.db.models import DbGtdbTree, GtdbWebUrlBergeys, GtdbWebUrlSeqcode, GtdbWebUrlLpsn, GtdbWebUrlNcbi, \
+#     GtdbWebUrlSandPiper
+# from api.db.models import MetadataTaxonomy, Genome
 
 # Configuration
 JSON_PATH = '/private/tmp/release226/genome_taxonomy_r226_count.json'

@@ -6,7 +6,7 @@ if __name__ == '__main__':
     load_dotenv()
 
 from api.db import GtdbWebSession
-from api.db.models import DbGtdbTree, GtdbWebUrlNcbi
+# from api.db.models import DbGtdbTree, GtdbWebUrlNcbi
 import requests
 
 import os

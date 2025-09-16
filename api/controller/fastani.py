@@ -19,8 +19,8 @@ from sqlalchemy.orm import Session
 from api.config import FASTANI_MAX_PAIRWISE, \
     FASTANI_PRIORITY_SECRET, FASTANI_BIN, FASTANI_JOB_TIMEOUT, \
     FASTANI_JOB_RESULT_TTL, FASTANI_JOB_FAIL_TTL, FASTANI_JOB_RETRY, FASTANI_GENOME_DIR
-from api.db.models import MetadataTaxonomy, Genome, GtdbFastaniGenome, GtdbFastaniResult, GtdbFastaniJob, MetadataNcbi, \
-    GtdbFastaniParam, GtdbFastaniVersion, GtdbFastaniJobQuery, GtdbFastaniJobReference
+# from api.db.models import MetadataTaxonomy, Genome, GtdbFastaniGenome, GtdbFastaniResult, GtdbFastaniJob, MetadataNcbi, \
+#     GtdbFastaniParam, GtdbFastaniVersion, GtdbFastaniJobQuery, GtdbFastaniJobReference
 from api.exceptions import HttpBadRequest, HttpNotFound, HttpInternalServerError
 from api.model.fastani import FastAniJobResult, FastAniParameters, FastAniResult, FastAniJobRequest, FastAniConfig, \
     FastAniResultData, FastAniJobHeatmap, FastAniJobHeatmapData, FastAniHeatmapDataStatus, FastAniJobInfo, \

@@ -10,7 +10,7 @@ from sqlalchemy import insert
 from tqdm import tqdm
 
 from api.db import GtdbSession, GtdbWebSession
-from api.db.models import MetadataTaxonomy, Genome, GtdbWebTaxonHist
+# from api.db.models import MetadataTaxonomy, Genome, GtdbWebTaxonHist
 from api.util.accession import canonical_gid
 from api.util.collection import iter_batches
 

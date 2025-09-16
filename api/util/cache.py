@@ -5,7 +5,7 @@ import re
 import time
 from pathlib import Path
 from typing import Any, Callable, Tuple
-
+import io
 from fastapi import Request
 
 from api.config import CACHE_DIR
@@ -18,11 +18,12 @@ def escape_for_disk(s: str) -> str:
     return RE_UNSAFE_CHARACTERS.sub('_', s)
 
 
-def md5_string(s: str) -> str:
+def md5_string(s: str, buffer_size: int = 8192) -> str:
     hash_object = hashlib.md5()
-    hash_object.update(s.encode('utf-8'))
+    stream = io.BytesIO(s.encode("utf-8"))
+    while chunk := stream.read(buffer_size):
+        hash_object.update(chunk)
     return hash_object.hexdigest()
-
 
 def get_cache_key_from_request(request: Request) -> Tuple[str, str, str | None]:
     """

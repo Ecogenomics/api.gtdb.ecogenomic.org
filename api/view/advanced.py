@@ -1,14 +1,12 @@
 from typing import Literal
 
 from fastapi import APIRouter
-from fastapi import Depends
 from fastapi import Request
 from fastapi.responses import StreamingResponse
-from sqlalchemy.orm import Session
 
 from api.controller.advanced import get_advanced_search_options, get_advanced_search_operators, \
     get_advanced_search_columns, get_advanced_search, adv_search_query_to_rows
-from api.db import get_gtdb_db
+from api.db import GtdbDbDep
 from api.model.advanced import AdvancedSearchOptionsResponse, AdvancedSearchOperatorResponse, \
     AdvancedSearchColumnResponse, AdvancedSearchResult
 from api.util.io import rows_to_delim
@@ -48,7 +46,7 @@ def v_advanced_get_columns():
     response_model=AdvancedSearchResult,
     summary='Return the result of an advanced search query.'
 )
-def v_advanced_get_search(request: Request, db: Session = Depends(get_gtdb_db)):
+def v_advanced_get_search(request: Request, db: GtdbDbDep):
     return get_advanced_search(query=dict(request.query_params), db=db)
 
 
@@ -60,7 +58,7 @@ def v_advanced_get_search(request: Request, db: Session = Depends(get_gtdb_db)):
 def get_by_id_download(
         fmt: Literal['csv', 'tsv'],
         request: Request,
-        db: Session = Depends(get_gtdb_db)
+        db: GtdbDbDep
 ):
     adv_result = get_advanced_search(query=dict(request.query_params), db=db)
     rows = adv_search_query_to_rows(adv_result)
@@ -78,7 +76,7 @@ def get_by_id_download(
 def v_download_genomes_from_adv(
         method: Literal['datasets', 'curl'],
         request: Request,
-        db: Session = Depends(get_gtdb_db),
+        db: GtdbDbDep,
         gff: bool = False,
         rna: bool = False,
         cds: bool = False,

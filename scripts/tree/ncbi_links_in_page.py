@@ -13,7 +13,7 @@ import os
 
 
 from api.db import GtdbWebSession, GtdbSession
-from api.db.models import DbGtdbTree, Genome, MetadataTaxonomy, GtdbWebGenomeTaxId
+# from api.db.models import DbGtdbTree, Genome, MetadataTaxonomy, GtdbWebGenomeTaxId
 import requests
 
 import os

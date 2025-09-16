@@ -1,32 +1,32 @@
 from urllib.parse import quote
 
 from fastapi import APIRouter
-from fastapi import Depends
-from sqlalchemy.orm import Session
 
-from api.db import get_gtdb_db, get_gtdb_web_db
+from api.config import SITEMAP_PAGES
+from api.db import GtdbDbDep, GtdbWebDbDep
 from api.util.collection import iter_batches
-from api.view.genomes import v_genomes_all
+from api.view.genomes import v_get_genomes_all
 from api.view.species import v_species_all
 from api.view.taxa import v_get_all_taxa
 
 router = APIRouter(prefix='/sitemap', tags=['sitemap'])
 
-MAIN_PAGES = ['about', 'advanced', 'attributions', 'browsers', 'contact',
-              'downloads', 'faq', 'gsc', 'methods', 'searches',
-              'tools/fastani', 'stats/r89', 'stats/r95', 'stats/r202',
-              'stats/r207', 'taxon-history', 'tools', 'tree']
-
 MAX_ITEMS = 4000
 
 
-@router.get('', summary='Generate the sitemap content for the GTDB website.')
-async def gtdb(db: Session = Depends(get_gtdb_db), db_web: Session = Depends(get_gtdb_web_db)):
+@router.get(
+    '',
+    summary='Generate the sitemap content for the GTDB website.'
+)
+async def gtdb(
+        db: GtdbDbDep,
+        db_web: GtdbWebDbDep
+):
     out = dict()
 
     # Load the genome pages for the sitemap
     all_species = v_species_all(db)
-    all_genomes = v_genomes_all(db)
+    all_genomes = v_get_genomes_all(db)
     all_taxa = v_get_all_taxa(db_web)
 
     # Generate the species pages
@@ -87,7 +87,7 @@ async def gtdb(db: Session = Depends(get_gtdb_db), db_web: Session = Depends(get
         '<?xml version="1.0" encoding="UTF-8"?>',
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
     ]
-    for page in MAIN_PAGES:
+    for page in SITEMAP_PAGES:
         out['sitemap-general.xml'].extend([
             '   <url>',
             f'      <loc>https://gtdb.ecogenomic.org/{quote(page)}</loc>',

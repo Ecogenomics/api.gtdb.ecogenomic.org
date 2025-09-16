@@ -1,8 +1,8 @@
 import re
 from typing import Dict, Any
 
-from sqlalchemy import sql
-from sqlalchemy.orm import Session
+import sqlmodel as sm
+from sqlmodel import Session
 
 from api.exceptions import HttpBadRequest
 from api.model.advanced import (
@@ -91,7 +91,7 @@ def parse_groups(groups: Dict[int, str]) -> dict[int, tuple[AdvancedSearchColumn
 def get_method(
         expression,
         groups: dict[int, tuple[AdvancedSearchColumn, AdvancedSearchOperator, str]],
-        db
+        db: Session
 ):
     mv_prefix = 'mv'
 
@@ -148,11 +148,11 @@ def get_method(
     columns_to_select = list(BASE_COLS)
     columns_to_select.extend([v[0] for k, v in groups.items() if v[0] not in set_base_cols])
     str_columns = ', '.join([f'mv.{x.column.key}' for x in columns_to_select])
-    query = sql.text(f"SELECT {str_columns} FROM genomes g INNER JOIN metadata_mtview mv "
-                     f"on mv.id = g.id WHERE g.genome_source_id != 1 AND ({str_where}) "
-                     f"ORDER BY g.id")
-    results = db.execute(query, parameters)
-    out_rows = [dict(x) for x in results]
+    query = sm.text(f"SELECT {str_columns} FROM genomes g INNER JOIN metadata_mtview mv "
+                    f"on mv.id = g.id WHERE g.genome_source_id != 1 AND ({str_where}) "
+                    f"ORDER BY g.id")
+    results = db.exec(query, params=parameters).all()
+    out_rows = [x._asdict() for x in results]
     out_headers = [AdvancedSearchHeader(text=x.display, value=x.column.key) for x in columns_to_select]
     return AdvancedSearchResult(headers=out_headers, rows=out_rows)
 

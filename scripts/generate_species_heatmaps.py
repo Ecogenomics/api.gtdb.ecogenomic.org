@@ -7,7 +7,7 @@ os.environ['POSTGRES_USER'] = 'gtdb_rw'
 os.environ['POSTGRES_PASS'] = 'kMBdwkvwpEXbAA8xsaw0chLa'
 
 from collections import defaultdict
-from api.db.models import MetadataTaxonomy, Genome, GenomeListContents, GtdbWebAni, GtdbWebSpeciesHeatmap
+# from api.db.models import MetadataTaxonomy, Genome, GenomeListContents, GtdbWebAni, GtdbWebSpeciesHeatmap
 from tqdm import tqdm
 from api.db import GtdbSession, GtdbWebSession
 import sqlalchemy as sa

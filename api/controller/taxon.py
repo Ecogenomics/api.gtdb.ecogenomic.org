@@ -1,13 +1,15 @@
-from typing import List, Optional
+from typing import List
 
 import numpy as np
-import sqlalchemy as sa
-from sqlalchemy import sql
-from sqlalchemy.orm import Session
+import sqlmodel as sm
+from sqlalchemy import func, union_all
+from sqlmodel import Session
 
-from api.db.models import GtdbSpeciesClusterCount, GtdbWebTaxonHist, MetadataTaxonomy, \
-    Genome, MetadataNucleotide, MetadataNcbi, DbGtdbTree
-from api.exceptions import HttpBadRequest, HttpNotFound
+from api.config import GTDB_RELEASES, CURRENT_RELEASE
+from api.db.gtdb import DbGtdbSpeciesClusterCount, DbMetadataTaxonomy, DbGenomes, DbMetadataNucleotide, DbMetadataNcbi
+from api.db.gtdb_web import DbGtdbTree, DbGtdbTreeUrlBergeys, DbGtdbTreeUrlSeqCode, DbGtdbTreeUrlNcbi, DbGtdbTreeUrlLpsn, \
+    DbGtdbTreeUrlSandpiper, DbGtdbTreeChildren, DbTaxonHist
+from api.exceptions import HttpBadRequest, HttpNotFound, HttpInternalServerError
 from api.model.graph import GraphHistogramBin
 from api.model.taxon import TaxonDescendants, TaxonSearchResponse, TaxonPreviousReleases, TaxonCard, \
     TaxonPreviousReleasesPaginated, TaxonGenomesDetailResponse, TaxonGenomesDetailRow
@@ -17,201 +19,240 @@ def get_taxon_descendants(taxon: str, db: Session) -> List[TaxonDescendants]:
     """Returns the direct descendants below this taxon."""
 
     # Get parent info
-    taxon_query = sa.select([DbGtdbTree.id]).where(DbGtdbTree.taxon == taxon)
-    taxon_results = db.execute(taxon_query).fetchall()
+    taxon_query = sm.select(DbGtdbTree).where(DbGtdbTree.taxon == taxon)
+    taxon_results = db.exec(taxon_query).all()
 
-    if len(taxon_results) != 1:
-        raise HttpBadRequest(f'Taxon {taxon} not found')
+    if len(taxon_results) == 0:
+        raise HttpBadRequest(f'The taxon {taxon} does not exist.')
+    if len(taxon_results) > 1:
+        raise HttpInternalServerError(f'The taxon {taxon} exists multiple times, please report this issue.')
     parent_id = taxon_results[0].id
 
-    query = sql.text("""
-            SELECT t.taxon,
-                   t.total,
-                   t.type,
-                   t.is_rep,
-                   t.type_material,
-                   t.n_desc_children,
-                   b.url   AS bergeys_url,
-                   s.url   AS seqcode_url,
-                   l.url   as lpsn_url,
-                   n.taxid AS ncbi_taxid,
-                   sp.url as sandpiper_url
-            FROM gtdb_tree t
-                     LEFT JOIN gtdb_tree_url_bergeys b ON b.id = t.id
-                     LEFT JOIN gtdb_tree_url_lpsn l ON l.id = t.id
-                     LEFT JOIN gtdb_tree_url_ncbi n ON n.id = t.id
-                     LEFT JOIN gtdb_tree_url_seqcode s ON s.id = t.id
-                     LEFT JOIN gtdb_tree_url_sandpiper sp ON sp.id = t.id
-                     INNER JOIN gtdb_tree_children gtc ON gtc.child_id = t.id
-            WHERE gtc.parent_id = :parent_id
-            ORDER BY gtc.order_id;
-    """)
-
-    results = db.execute(query, {'parent_id': parent_id}).fetchall()
-
-    for result in results:
-        yield TaxonDescendants(
-            taxon=result.taxon,
-            total=result.total,
-            isGenome=result.type == 'genome',
-            isRep=result.is_rep,
-            typeMaterial=result.type_material,
-            nDescChildren=result.n_desc_children,
-            bergeysUrl=result.bergeys_url,
-            seqcodeUrl=result.seqcode_url,
-            lpsnUrl=result.lpsn_url,
-            ncbiTaxId=result.ncbi_taxid,
-            sandpiperUrl=result.sandpiper_url
+    query = (
+        sm.select(
+            DbGtdbTree.taxon,
+            DbGtdbTree.total,
+            DbGtdbTree.type,
+            DbGtdbTree.is_rep,
+            DbGtdbTree.type_material,
+            DbGtdbTree.n_desc_children,
+            DbGtdbTreeUrlBergeys.url.label('bergeys_url'),
+            DbGtdbTreeUrlSeqCode.url.label('seqcode_url'),
+            DbGtdbTreeUrlLpsn.url.label('lpsn_url'),
+            DbGtdbTreeUrlNcbi.taxid.label('ncbi_taxid'),
+            DbGtdbTreeUrlSandpiper.url.label('sandpiper_url')
         )
+        .join(DbGtdbTreeChildren, DbGtdbTreeChildren.child_id == DbGtdbTree.id)
+        .outerjoin(DbGtdbTreeUrlBergeys, DbGtdbTreeUrlBergeys.id == DbGtdbTree.id)
+        .outerjoin(DbGtdbTreeUrlSeqCode, DbGtdbTreeUrlSeqCode.id == DbGtdbTree.id)
+        .outerjoin(DbGtdbTreeUrlLpsn, DbGtdbTreeUrlLpsn.id == DbGtdbTree.id)
+        .outerjoin(DbGtdbTreeUrlNcbi, DbGtdbTreeUrlNcbi.id == DbGtdbTree.id)
+        .outerjoin(DbGtdbTreeUrlSandpiper, DbGtdbTreeUrlSandpiper.id == DbGtdbTree.id)
+        .where(DbGtdbTreeChildren.parent_id == parent_id)
+        .order_by(DbGtdbTreeChildren.order_id)
+    )
+
+    results = db.exec(query).all()
+
+    out = list()
+    for result in results:
+        out.append(
+            TaxonDescendants(
+                taxon=result.taxon,
+                total=result.total,
+                isGenome=result.type == 'genome',
+                isRep=result.is_rep,
+                typeMaterial=result.type_material,
+                nDescChildren=result.n_desc_children,
+                bergeysUrl=result.bergeys_url,
+                seqcodeUrl=result.seqcode_url,
+                lpsnUrl=result.lpsn_url,
+                ncbiTaxId=result.ncbi_taxid,
+                sandpiperUrl=result.sandpiper_url
+            )
+        )
+    return out
 
 
-def search_for_taxon(taxon: str, limit: Optional[int], db: Session) -> TaxonSearchResponse:
+def search_for_taxon(taxon: str, limit: int | None, db: Session) -> TaxonSearchResponse:
     # Maximum number of results to be returned
-    if limit:
-        limit = max(limit, 100)
+    if limit is not None:
+        limit = min(limit, 100)
     else:
         limit = 100
 
     if taxon.startswith('d__'):
-        col = GtdbSpeciesClusterCount.gtdb_domain
+        col = DbGtdbSpeciesClusterCount.gtdb_domain
         prefix = 'd__'
     elif taxon.startswith('p__'):
-        col = GtdbSpeciesClusterCount.gtdb_phylum
+        col = DbGtdbSpeciesClusterCount.gtdb_phylum
         prefix = 'p__'
     elif taxon.startswith('c__'):
-        col = GtdbSpeciesClusterCount.gtdb_class
+        col = DbGtdbSpeciesClusterCount.gtdb_class
         prefix = 'c__'
     elif taxon.startswith('o__'):
-        col = GtdbSpeciesClusterCount.gtdb_order
+        col = DbGtdbSpeciesClusterCount.gtdb_order
         prefix = 'o__'
     elif taxon.startswith('f__'):
-        col = GtdbSpeciesClusterCount.gtdb_family
+        col = DbGtdbSpeciesClusterCount.gtdb_family
         prefix = 'f__'
     elif taxon.startswith('g__'):
-        col = GtdbSpeciesClusterCount.gtdb_genus
+        col = DbGtdbSpeciesClusterCount.gtdb_genus
         prefix = 'g__'
     elif taxon.startswith('s__'):
-        col = GtdbSpeciesClusterCount.gtdb_species
+        col = DbGtdbSpeciesClusterCount.gtdb_species
         prefix = 's__'
     else:
-        prefix = taxon[0:3]
         col = None
+        prefix = None
 
-    # Shortcut and only use one column
+    # If a prefix has been supplied, then we can just search that rank only
     if col:
-        query = sa.select([col]).where(col.ilike(f'{taxon[3:]}%')).limit(limit).distinct()
-        return TaxonSearchResponse(matches=[f'{prefix}{x[0]}' for x in db.execute(query)])
+        query = sm.select(func.concat(prefix, col)).where(col.ilike(f'{taxon[3:]}%')).distinct().limit(limit)
+        results = db.exec(query).all()
+        return TaxonSearchResponse(matches=list(results))
 
     # Run against all columns
     else:
-        all_results = list()
-        for col, prefix in [(GtdbSpeciesClusterCount.gtdb_domain, 'd__'),
-                            (GtdbSpeciesClusterCount.gtdb_phylum, 'p__'),
-                            (GtdbSpeciesClusterCount.gtdb_class, 'c__'),
-                            (GtdbSpeciesClusterCount.gtdb_order, 'o__'),
-                            (GtdbSpeciesClusterCount.gtdb_family, 'f__'),
-                            (GtdbSpeciesClusterCount.gtdb_genus, 'g__'),
-                            (GtdbSpeciesClusterCount.gtdb_species, 's__')]:
-            query = sa.select([col]).where(col.ilike(f'%{taxon}%')).limit(limit).distinct()
-            all_results.extend([f'{prefix}{x[0]}' for x in db.execute(query)])
-        return TaxonSearchResponse(matches=all_results)
+        # Create a subquery for each rank
+        subqueries = list()
+        for col, prefix in (
+                (DbGtdbSpeciesClusterCount.gtdb_domain, 'd__'),
+                (DbGtdbSpeciesClusterCount.gtdb_phylum, 'p__'),
+                (DbGtdbSpeciesClusterCount.gtdb_class, 'c__'),
+                (DbGtdbSpeciesClusterCount.gtdb_order, 'o__'),
+                (DbGtdbSpeciesClusterCount.gtdb_family, 'f__'),
+                (DbGtdbSpeciesClusterCount.gtdb_genus, 'g__'),
+                (DbGtdbSpeciesClusterCount.gtdb_species, 's__')
+        ):
+            subquery = (
+                sm.select(func.concat(prefix, col))
+                .where(col.ilike(f'%{taxon}%'))
+                .distinct()
+                .limit(limit)
+            )
+            subqueries.append(subquery)
+
+        # Union the subqueries and run them
+        query = union_all(*subqueries)
+        results = db.exec(query).all()
+        return TaxonSearchResponse(matches=[x[0] for x in results])
 
 
-def get_taxon_genomes_in_taxon(taxon: str, sp_reps_only: bool, db: Session) -> List[str]:
-    rank_to_col = {'d__': MetadataTaxonomy.gtdb_domain,
-                   'p__': MetadataTaxonomy.gtdb_phylum,
-                   'c__': MetadataTaxonomy.gtdb_class,
-                   'o__': MetadataTaxonomy.gtdb_order,
-                   'f__': MetadataTaxonomy.gtdb_family,
-                   'g__': MetadataTaxonomy.gtdb_genus,
-                   's__': MetadataTaxonomy.gtdb_species}
+def get_taxon_genomes_in_taxon(taxon: str, sp_reps_only: bool | None, db: Session) -> List[str]:
+    rank_to_col = {
+        'd__': DbMetadataTaxonomy.gtdb_domain,
+        'p__': DbMetadataTaxonomy.gtdb_phylum,
+        'c__': DbMetadataTaxonomy.gtdb_class,
+        'o__': DbMetadataTaxonomy.gtdb_order,
+        'f__': DbMetadataTaxonomy.gtdb_family,
+        'g__': DbMetadataTaxonomy.gtdb_genus,
+        's__': DbMetadataTaxonomy.gtdb_species
+    }
     col = rank_to_col.get(taxon[0:3])
     if not col:
         raise HttpBadRequest('Taxon must be in green-genes format, e.g. "g__Foo"')
 
-    query = sa.select([Genome.name]). \
-        select_from(sa.join(Genome, MetadataTaxonomy)). \
-        where(col == taxon). \
-        order_by(Genome.name)
+    # Create the query
+    query = (
+        sm.select(DbGenomes.name)
+        .join(DbMetadataTaxonomy, DbMetadataTaxonomy.id == DbGenomes.id)
+        .where(col == taxon)
+        .order_by(DbGenomes.name)
+    )
 
+    # Optionally, limit to only those that are representatives
     if sp_reps_only:
-        query = query.where(MetadataTaxonomy.gtdb_representative == True)
+        query = query.where(DbMetadataTaxonomy.gtdb_representative == True)
 
-    for row in db.execute(query):
-        yield str(row.name)
+    results = db.exec(query).all()
+    return list(results)
 
 
-def search_for_taxon_all_releases(taxon: str, limit: Optional[int], db: Session) -> TaxonSearchResponse:
+def search_for_taxon_all_releases(taxon: str, limit: int | None, db: Session) -> TaxonSearchResponse:
     # Maximum number of results to be returned
     if limit:
-        limit = max(limit, 100)
+        limit = min(limit, 100)
     else:
         limit = 100
 
     if taxon.startswith('d__'):
-        col = GtdbWebTaxonHist.rank_domain
+        col = DbTaxonHist.rank_domain
     elif taxon.startswith('p__'):
-        col = GtdbWebTaxonHist.rank_phylum
+        col = DbTaxonHist.rank_phylum
     elif taxon.startswith('c__'):
-        col = GtdbWebTaxonHist.rank_class
+        col = DbTaxonHist.rank_class
     elif taxon.startswith('o__'):
-        col = GtdbWebTaxonHist.rank_order
+        col = DbTaxonHist.rank_order
     elif taxon.startswith('f__'):
-        col = GtdbWebTaxonHist.rank_family
+        col = DbTaxonHist.rank_family
     elif taxon.startswith('g__'):
-        col = GtdbWebTaxonHist.rank_genus
+        col = DbTaxonHist.rank_genus
     elif taxon.startswith('s__'):
-        col = GtdbWebTaxonHist.rank_species
+        col = DbTaxonHist.rank_species
     else:
         col = None
 
-    # Shortcut and only use one column
+    # If a prefix has been supplied, then we can just search that rank only
     if col:
-        query = sa.select([col]).where(col.ilike(f'{taxon}%')).limit(limit).distinct()
-        return TaxonSearchResponse(matches=[str(x[0]) for x in db.execute(query)])
+        query = sm.select(col).where(col.ilike(f'{taxon}%')).distinct().limit(limit)
+        results = db.exec(query).all()
+        return TaxonSearchResponse(matches=list(results))
 
     # Run against all columns
     else:
-        all_results = list()
-        for col in (GtdbWebTaxonHist.rank_domain, GtdbWebTaxonHist.rank_phylum,
-                    GtdbWebTaxonHist.rank_class, GtdbWebTaxonHist.rank_order,
-                    GtdbWebTaxonHist.rank_family, GtdbWebTaxonHist.rank_genus,
-                    GtdbWebTaxonHist.rank_species):
-            query = sa.select([col]).where(col.ilike(f'%{taxon}%')).limit(limit).distinct()
-            all_results.extend([str(x[0]) for x in db.execute(query)])
-        return TaxonSearchResponse(matches=all_results)
+        subqueries = list()
+        for col in (
+                DbTaxonHist.rank_domain,
+                DbTaxonHist.rank_phylum,
+                DbTaxonHist.rank_class,
+                DbTaxonHist.rank_order,
+                DbTaxonHist.rank_family,
+                DbTaxonHist.rank_genus,
+                DbTaxonHist.rank_species
+        ):
+            subquery = (sm.select(col).where(col.ilike(f'%{taxon}%')).distinct().limit(limit))
+            subqueries.append(subquery)
+
+        # Union the subqueries and run them
+        query = union_all(*subqueries)
+        results = db.exec(query).all()
+        return TaxonSearchResponse(matches=[x[0] for x in results])
 
 
-def results_from_previous_releases(search: str, db: Session, page: Optional[int] = None,
-                                   items_per_page: Optional[int] = None) -> TaxonPreviousReleasesPaginated:
+def results_from_previous_releases(
+        search: str,
+        db: Session,
+        page: int | None = None,
+        items_per_page: int | None = None
+) -> TaxonPreviousReleasesPaginated:
     # Validate the input.
     search = search.strip()
-    if len(search) <= 0:
-        raise HttpBadRequest('The search query must be greater than 3 characters.')
+    if len(search) == 0:
+        raise HttpBadRequest('The taxon cannot be empty.')
     search = '%{}%'.format(search)
 
-    # Additionally, search the taxon history database to check if this is a synonym.
-    query = sql.text("""SELECT DISTINCT rank_domain AS rank_name, release_ver FROM taxon_hist WHERE rank_domain ILIKE :arg
-                            UNION ALL
-                        SELECT DISTINCT rank_phylum, release_ver FROM taxon_hist WHERE rank_phylum ILIKE :arg
-                            UNION ALL
-                        SELECT DISTINCT rank_class, release_ver FROM taxon_hist WHERE rank_class ILIKE :arg
-                            UNION ALL
-                        SELECT DISTINCT rank_order, release_ver FROM taxon_hist WHERE rank_order ILIKE :arg
-                            UNION ALL
-                        SELECT DISTINCT rank_family, release_ver FROM taxon_hist WHERE rank_family ILIKE :arg
-                            UNION ALL
-                        SELECT DISTINCT rank_genus, release_ver FROM taxon_hist WHERE rank_genus ILIKE :arg
-                            UNION ALL
-                        SELECT DISTINCT rank_species, release_ver FROM taxon_hist WHERE rank_species ILIKE :arg;""")
-    results = db.execute(query, {'arg': search})
-    rank_order_dict = {'R80': 0, 'R83': 1, 'R86.2': 2, 'R89': 3, 'R95': 4, 'R202': 5, 'R207': 6, 'R214': 7, 'R220': 8, 'R226': 9,
-                       'NCBI': 10}
+    # Create the subqueries for each rank
+    subqueries = list()
+    for rank in (
+            DbTaxonHist.rank_domain,
+            DbTaxonHist.rank_phylum,
+            DbTaxonHist.rank_class,
+            DbTaxonHist.rank_order,
+            DbTaxonHist.rank_family,
+            DbTaxonHist.rank_genus,
+            DbTaxonHist.rank_species
+    ):
+        subqueries.append(sm.select(rank, DbTaxonHist.release_ver).where(rank.ilike(f'%{search}%')).distinct())
+
+    # Execute the query
+    results = db.exec(union_all(*subqueries)).all()
+    rank_order_dict = {x: i for (i, x) in enumerate(GTDB_RELEASES)}
 
     # There's a case that exists where the case is slightly different for previous releases.
     # Therefore, if all the keys are the same (ignoring case), and the current release is present
     # then use the most recent releases capitalisation
-    results = [(x.rank_name.strip(), x.release_ver.strip()) for x in results]
+    results = [(x.strip(), y.strip()) for (x, y) in results]
 
     d_oldest_taxon_name = dict()
     for cur_taxon, release_ver in results:
@@ -239,11 +280,11 @@ def results_from_previous_releases(search: str, db: Session, page: Optional[int]
     for rank_name, rank_set in all_hits.items():
 
         # Only interested in previous GTDB releases
-        if 'R226' in rank_set:
+        if CURRENT_RELEASE in rank_set:
             continue
 
         # Ignore those which only appear in NCBI
-        if len(rank_set - {'NCBI', 'R226'}) == 0:
+        if len(rank_set - {'NCBI', CURRENT_RELEASE}) == 0:
             continue
 
         if rank_name not in out:
@@ -273,29 +314,33 @@ def results_from_previous_releases(search: str, db: Session, page: Optional[int]
 def get_gc_content_histogram_bins(taxon: str, db: Session) -> List[GraphHistogramBin]:
     # Select the target column to search
     if taxon.startswith('d__'):
-        target_col = MetadataTaxonomy.gtdb_domain
+        target_col = DbMetadataTaxonomy.gtdb_domain
     elif taxon.startswith('p__'):
-        target_col = MetadataTaxonomy.gtdb_phylum
+        target_col = DbMetadataTaxonomy.gtdb_phylum
     elif taxon.startswith('c__'):
-        target_col = MetadataTaxonomy.gtdb_class
+        target_col = DbMetadataTaxonomy.gtdb_class
     elif taxon.startswith('o__'):
-        target_col = MetadataTaxonomy.gtdb_order
+        target_col = DbMetadataTaxonomy.gtdb_order
     elif taxon.startswith('f__'):
-        target_col = MetadataTaxonomy.gtdb_family
+        target_col = DbMetadataTaxonomy.gtdb_family
     elif taxon.startswith('g__'):
-        target_col = MetadataTaxonomy.gtdb_genus
+        target_col = DbMetadataTaxonomy.gtdb_genus
     elif taxon.startswith('s__'):
-        target_col = MetadataTaxonomy.gtdb_species
+        target_col = DbMetadataTaxonomy.gtdb_species
     else:
         raise HttpBadRequest(f'Invalid taxon {taxon}')
 
     # Select the GC values
-    query = sa.select([MetadataNucleotide.gc_percentage]).select_from(
-        sa.join(Genome, MetadataTaxonomy).join(MetadataNucleotide)).where(target_col == taxon)
-    results = db.execute(query).fetchall()
+    query = (
+        sm.select(DbMetadataNucleotide.gc_percentage)
+        .join(DbGenomes, DbMetadataNucleotide.id == DbGenomes.id)
+        .join(DbMetadataTaxonomy, DbMetadataTaxonomy.id == DbGenomes.id)
+        .where(target_col == taxon)
+    )
+    results = db.exec(query).all()
+
     if len(results) == 0:
         raise HttpBadRequest(f'Taxon {taxon} not found')
-    results = [x[0] for x in results]
 
     # Compute the histogram bins
     counts, bin_edges = np.histogram(results, bins='auto')
@@ -306,15 +351,15 @@ def get_gc_content_histogram_bins(taxon: str, db: Session) -> List[GraphHistogra
     return out
 
 
-def get_taxon_card(taxon: str, db_gtdb: Session, db_web: Session) -> TaxonCard:
+def get_taxon_card(taxon: str, db_gtdb: Session) -> TaxonCard:
     idx_to_tax_col = (
-        MetadataTaxonomy.gtdb_domain,
-        MetadataTaxonomy.gtdb_phylum,
-        MetadataTaxonomy.gtdb_class,
-        MetadataTaxonomy.gtdb_order,
-        MetadataTaxonomy.gtdb_family,
-        MetadataTaxonomy.gtdb_genus,
-        MetadataTaxonomy.gtdb_species,
+        DbMetadataTaxonomy.gtdb_domain,
+        DbMetadataTaxonomy.gtdb_phylum,
+        DbMetadataTaxonomy.gtdb_class,
+        DbMetadataTaxonomy.gtdb_order,
+        DbMetadataTaxonomy.gtdb_family,
+        DbMetadataTaxonomy.gtdb_genus,
+        DbMetadataTaxonomy.gtdb_species,
     )
     idx_to_rank = ('Domain', 'Phylum', 'Class', 'Order', 'Family', 'Genus', 'Species')
 
@@ -341,24 +386,29 @@ def get_taxon_card(taxon: str, db_gtdb: Session, db_web: Session) -> TaxonCard:
     higher_ranks = idx_to_tax_col[:rank_idx]
 
     # Make sure this taxon exists
-    query_n_gids = sa.select([sa.func.count('*')]).select_from(MetadataTaxonomy).where(target_col == taxon)
-    results_n_gids = db_gtdb.execute(query_n_gids).fetchall()
-    if len(results_n_gids) == 0:
+    query_n_gids = sm.select(func.count('*')).where(target_col == taxon)
+    n_genomes = db_gtdb.exec(query_n_gids).first()
+    if n_genomes == 0:
         raise HttpBadRequest(f'Taxon {taxon} not found')
-    n_genomes = results_n_gids[0]['count']
 
     # Find the higher ranks for this taxon
     if len(higher_ranks) > 0:
-        query_higher_ranks = sa.select(higher_ranks).select_from(MetadataTaxonomy).where(target_col == taxon).distinct()
-        results_higher_ranks = db_gtdb.execute(query_higher_ranks).fetchall()
+
+        query_higher_ranks = sm.select(*higher_ranks).where(target_col == taxon).distinct()
+        results_higher_ranks = db_gtdb.exec(query_higher_ranks).all()
+
         if len(results_higher_ranks) != 1:
             raise HttpBadRequest(f'Taxon {taxon} not found')
-        higher_ranks_out = list(results_higher_ranks[0])
+
+        # Take each of the higher ranks and output it into a list
+        if len(higher_ranks) > 1:
+            higher_ranks_out = list(results_higher_ranks[0])
+        else:
+            higher_ranks_out = [results_higher_ranks[0]]
     else:
         higher_ranks_out = list()
 
     # Find the releases this taxon is present in
-
     return TaxonCard(
         nGenomes=n_genomes,
         rank=cur_rank,
@@ -369,15 +419,14 @@ def get_taxon_card(taxon: str, db_gtdb: Session, db_web: Session) -> TaxonCard:
 
 def get_taxon_genomes_detail(taxon: str, sp_reps_only: bool, db: Session) -> TaxonGenomesDetailResponse:
     idx_to_tax_col = (
-        MetadataTaxonomy.gtdb_domain,
-        MetadataTaxonomy.gtdb_phylum,
-        MetadataTaxonomy.gtdb_class,
-        MetadataTaxonomy.gtdb_order,
-        MetadataTaxonomy.gtdb_family,
-        MetadataTaxonomy.gtdb_genus,
-        MetadataTaxonomy.gtdb_species,
+        DbMetadataTaxonomy.gtdb_domain,
+        DbMetadataTaxonomy.gtdb_phylum,
+        DbMetadataTaxonomy.gtdb_class,
+        DbMetadataTaxonomy.gtdb_order,
+        DbMetadataTaxonomy.gtdb_family,
+        DbMetadataTaxonomy.gtdb_genus,
+        DbMetadataTaxonomy.gtdb_species,
     )
-    idx_to_rank = ('Domain', 'Phylum', 'Class', 'Order', 'Family', 'Genus', 'Species')
 
     # Select the target column to search
     if taxon.startswith('d__'):
@@ -398,57 +447,57 @@ def get_taxon_genomes_detail(taxon: str, sp_reps_only: bool, db: Session) -> Tax
         raise HttpBadRequest(f'Invalid taxon {taxon}')
     target_col = idx_to_tax_col[rank_idx]
 
-    query_n_gids = sa.select([
-        Genome.name,
-        MetadataTaxonomy.gtdb_domain,
-        MetadataTaxonomy.gtdb_phylum,
-        MetadataTaxonomy.gtdb_class,
-        MetadataTaxonomy.gtdb_order,
-        MetadataTaxonomy.gtdb_family,
-        MetadataTaxonomy.gtdb_genus,
-        MetadataTaxonomy.gtdb_species,
-        MetadataTaxonomy.gtdb_representative
-    ]). \
-        select_from(sa.join(Genome, MetadataTaxonomy).join(MetadataNcbi)). \
-        where(target_col == taxon). \
-        where(Genome.id == MetadataTaxonomy.id). \
-        where(Genome.id == MetadataNcbi.id). \
-        where(MetadataNcbi.ncbi_genbank_assembly_accession != None). \
-        where(MetadataTaxonomy.gtdb_domain != 'd__'). \
-        where(MetadataTaxonomy.gtdb_phylum != 'p__'). \
-        where(MetadataTaxonomy.gtdb_class != 'c__'). \
-        where(MetadataTaxonomy.gtdb_order != 'o__'). \
-        where(MetadataTaxonomy.gtdb_family != 'f__'). \
-        where(MetadataTaxonomy.gtdb_genus != 'g__'). \
-        where(MetadataTaxonomy.gtdb_species != 's__'). \
-        order_by(MetadataTaxonomy.gtdb_domain). \
-        order_by(MetadataTaxonomy.gtdb_phylum). \
-        order_by(MetadataTaxonomy.gtdb_class). \
-        order_by(MetadataTaxonomy.gtdb_order). \
-        order_by(MetadataTaxonomy.gtdb_family). \
-        order_by(MetadataTaxonomy.gtdb_genus). \
-        order_by(MetadataTaxonomy.gtdb_species). \
-        order_by(MetadataTaxonomy.gtdb_representative.desc()). \
-        order_by(Genome.name)
+    query_n_gids = (
+        sm.select(
+            DbGenomes.name,
+            DbMetadataTaxonomy.gtdb_domain,
+            DbMetadataTaxonomy.gtdb_phylum,
+            DbMetadataTaxonomy.gtdb_class,
+            DbMetadataTaxonomy.gtdb_order,
+            DbMetadataTaxonomy.gtdb_family,
+            DbMetadataTaxonomy.gtdb_genus,
+            DbMetadataTaxonomy.gtdb_species,
+            DbMetadataTaxonomy.gtdb_representative
+        )
+        .join(DbMetadataTaxonomy, DbMetadataTaxonomy.id == DbGenomes.id)
+        .join(DbMetadataNcbi, DbMetadataNcbi.id == DbGenomes.id)
+        .where(target_col == taxon)
+        .where(DbMetadataNcbi.ncbi_genbank_assembly_accession != None)
+        .where(DbMetadataTaxonomy.gtdb_domain != 'd__')
+        .where(DbMetadataTaxonomy.gtdb_phylum != 'p__')
+        .where(DbMetadataTaxonomy.gtdb_class != 'c__')
+        .where(DbMetadataTaxonomy.gtdb_order != 'o__')
+        .where(DbMetadataTaxonomy.gtdb_family != 'f__')
+        .where(DbMetadataTaxonomy.gtdb_genus != 'g__')
+        .where(DbMetadataTaxonomy.gtdb_species != 's__')
+        .order_by(DbMetadataTaxonomy.gtdb_domain)
+        .order_by(DbMetadataTaxonomy.gtdb_phylum)
+        .order_by(DbMetadataTaxonomy.gtdb_class)
+        .order_by(DbMetadataTaxonomy.gtdb_order)
+        .order_by(DbMetadataTaxonomy.gtdb_family)
+        .order_by(DbMetadataTaxonomy.gtdb_genus)
+        .order_by(DbMetadataTaxonomy.gtdb_species)
+        .order_by(DbMetadataTaxonomy.gtdb_representative.desc())
+        .order_by(DbGenomes.name)
+    )
     if sp_reps_only:
-        query_n_gids = query_n_gids.where(MetadataTaxonomy.gtdb_representative == True)
+        query_n_gids = query_n_gids.where(DbMetadataTaxonomy.gtdb_representative == True)
 
-    db_rows = db.execute(query_n_gids).fetchall()
+    db_rows = db.exec(query_n_gids).all()
     if len(db_rows) == 0:
         raise HttpNotFound(f'Taxon {taxon} not found')
 
     rows_out = list()
     for row in db_rows:
         rows_out.append(TaxonGenomesDetailRow(
-            gid=row['name'],
-            gtdbIsRep=row['gtdb_representative'],
-            gtdbDomain=row['gtdb_domain'],
-            gtdbPhylum=row['gtdb_phylum'],
-            gtdbClass=row['gtdb_class'],
-            gtdbOrder=row['gtdb_order'],
-            gtdbFamily=row['gtdb_family'],
-            gtdbGenus=row['gtdb_genus'],
-            gtdbSpecies=row['gtdb_species'],
+            gid=row.name,
+            gtdbIsRep=row.gtdb_representative,
+            gtdbDomain=row.gtdb_domain,
+            gtdbPhylum=row.gtdb_phylum,
+            gtdbClass=row.gtdb_class,
+            gtdbOrder=row.gtdb_order,
+            gtdbFamily=row.gtdb_family,
+            gtdbGenus=row.gtdb_genus,
+            gtdbSpecies=row.gtdb_species
         ))
-
     return TaxonGenomesDetailResponse(rows=rows_out)

@@ -1,9 +1,9 @@
 from typing import List
 
-import sqlalchemy as sa
-from sqlalchemy.orm import Session
+import sqlmodel as sm
+from sqlmodel import Session
 
-from api.db.models import Genome, MetadataNcbi, MetadataTaxonomy, GtdbTaxonomyView, GenomeListContents
+from api.db.gtdb import DbGenomes, DbMetadataNcbi, DbMetadataTaxonomy, DbGtdbTaxonomyView, DbGenomeListContents
 from api.exceptions import HttpInternalServerError, HttpBadRequest
 from api.model.species import SpeciesCluster, SpeciesClusterGenome
 
@@ -13,37 +13,37 @@ def get_species_cluster(species: str, db: Session) -> SpeciesCluster:
 
     # Get each of the genomes in the species cluster
     base_query = (
-        sa.select([Genome.id,
-                   MetadataNcbi.ncbi_organism_name,
-                   sa.func.replace(MetadataTaxonomy.ncbi_taxonomy, ';', '; ').label('ncbi_taxonomy'),
-                   MetadataTaxonomy.gtdb_domain,
-                   MetadataTaxonomy.gtdb_phylum,
-                   MetadataTaxonomy.gtdb_class,
-                   MetadataTaxonomy.gtdb_order,
-                   MetadataTaxonomy.gtdb_family,
-                   MetadataTaxonomy.gtdb_genus,
-                   MetadataTaxonomy.gtdb_species,
-                   MetadataTaxonomy.gtdb_representative,
-                   MetadataTaxonomy.ncbi_type_material_designation,
-                   MetadataNcbi.ncbi_genbank_assembly_accession
-                   ]).
-            select_from(sa.outerjoin(Genome, MetadataTaxonomy).
-                        outerjoin(GtdbTaxonomyView).
-                        outerjoin(MetadataNcbi)).
-            where(sa.or_(Genome.genome_source_id != 1,
-                         Genome.id.in_(
-                             sa.select([GenomeListContents.genome_id]).
-                                 select_from(GenomeListContents).
-                                 where(GenomeListContents.list_id == 1152))
-                         )
-                  )
+        sm.select(
+            DbGenomes.id,
+            DbMetadataNcbi.ncbi_organism_name,
+            sm.func.replace(DbMetadataTaxonomy.ncbi_taxonomy, ';', '; ').label('ncbi_taxonomy'),
+            DbMetadataTaxonomy.gtdb_domain,
+            DbMetadataTaxonomy.gtdb_phylum,
+            DbMetadataTaxonomy.gtdb_class,
+            DbMetadataTaxonomy.gtdb_order,
+            DbMetadataTaxonomy.gtdb_family,
+            DbMetadataTaxonomy.gtdb_genus,
+            DbMetadataTaxonomy.gtdb_species,
+            DbMetadataTaxonomy.gtdb_representative,
+            DbMetadataTaxonomy.ncbi_type_material_designation,
+            DbMetadataNcbi.ncbi_genbank_assembly_accession
+        )
+        .outerjoin(DbMetadataTaxonomy, DbMetadataTaxonomy.id == DbGenomes.id)
+        .outerjoin(DbGtdbTaxonomyView, DbGtdbTaxonomyView.id == DbGenomes.id)
+        .outerjoin(DbMetadataNcbi, DbMetadataNcbi.id == DbGenomes.id)
+        .where(sm.or_(DbGenomes.genome_source_id != 1,
+                      DbGenomes.id.in_(
+                          sm.select(DbGenomeListContents.genome_id).
+                          where(DbGenomeListContents.list_id == 1152))
+                      )
+               )
     )
-    query = base_query.where(MetadataTaxonomy.gtdb_species == f's__{species}')
+    query = base_query.where(DbMetadataTaxonomy.gtdb_species == f's__{species}')
 
     # Convert to objects
     species_cluster_genomes = list()
     d, p, c, o, f, g, s = set(), set(), set(), set(), set(), set(), set()
-    for row in db.execute(query):
+    for row in db.exec(query):
         d.add(row.gtdb_domain)
         p.add(row.gtdb_phylum)
         c.add(row.gtdb_class)
@@ -52,11 +52,13 @@ def get_species_cluster(species: str, db: Session) -> SpeciesCluster:
         g.add(row.gtdb_genus)
         s.add(row.gtdb_species)
         species_cluster_genomes.append(
-            SpeciesClusterGenome(accession=row.ncbi_genbank_assembly_accession,
-                                 ncbi_org_name=row.ncbi_organism_name,
-                                 ncbi_tax=row.ncbi_taxonomy,
-                                 gtdb_species_rep=row.gtdb_representative,
-                                 ncbi_type_material=row.ncbi_type_material_designation)
+            SpeciesClusterGenome(
+                accession=row.ncbi_genbank_assembly_accession,
+                ncbi_org_name=row.ncbi_organism_name,
+                ncbi_tax=row.ncbi_taxonomy,
+                gtdb_species_rep=row.gtdb_representative,
+                ncbi_type_material=row.ncbi_type_material_designation
+            )
         )
 
     # Validation
@@ -64,32 +66,35 @@ def get_species_cluster(species: str, db: Session) -> SpeciesCluster:
         raise HttpBadRequest(f'No genomes found for species {species}')
     if len(d) + len(p) + len(c) + len(o) + len(f) + len(g) + len(s) != 7:
         raise HttpInternalServerError(f'Too many taxonomic levels for species {species}')
-    cluster = SpeciesCluster(name=species, genomes=species_cluster_genomes,
-                             d=list(d)[0], p=list(p)[0], c=list(c)[0], o=list(o)[0],
-                             f=list(f)[0], g=list(g)[0], s=list(s)[0])
+    cluster = SpeciesCluster(
+        name=species, genomes=species_cluster_genomes,
+        d=list(d)[0], p=list(p)[0], c=list(c)[0], o=list(o)[0],
+        f=list(f)[0], g=list(g)[0], s=list(s)[0]
+    )
     return cluster
 
 
 def util_species_all(db: Session) -> List[str]:
-    out = list()
-
     query = (
-        sa.select([MetadataTaxonomy.gtdb_species]).
-            select_from(sa.outerjoin(Genome, MetadataTaxonomy).
-                        outerjoin(GtdbTaxonomyView).
-                        outerjoin(MetadataNcbi)).
-            where(sa.or_(Genome.genome_source_id != 1,
-                         Genome.id.in_(
-                             sa.select([GenomeListContents.genome_id]).
-                                 select_from(GenomeListContents).
-                                 where(GenomeListContents.list_id == 1152))
-                         )
-                  )
-            .where(MetadataTaxonomy.gtdb_species != 's__')
-    ).order_by(MetadataTaxonomy.gtdb_species).distinct()
+        sm.select(DbMetadataTaxonomy.gtdb_species)
+        .outerjoin(DbGenomes, DbMetadataTaxonomy.id == DbGenomes.id)
+        .outerjoin(DbGtdbTaxonomyView, DbGtdbTaxonomyView.id == DbGenomes.id)
+        .outerjoin(DbMetadataNcbi, DbMetadataNcbi.id == DbGenomes.id)
+        .where(
+            sm.or_(
+                DbGenomes.genome_source_id != 1,
+                DbGenomes.id.in_(
+                    sm.select(DbGenomeListContents.genome_id).
+                    where(DbGenomeListContents.list_id == 1152)
+                )
+            )
+        )
+        .where(DbMetadataTaxonomy.gtdb_species != 's__')
+        .order_by(DbMetadataTaxonomy.gtdb_species).distinct()
+    )
 
-    rows = db.execute(query)
-    return [str(x.gtdb_species) for x in rows]
+    rows = db.exec(query).all()
+    return list(rows)
 
 #
 # def c_species_heatmap(species: str, db_web: Session, db_gtdb: Session) -> SpeciesHeatmap:

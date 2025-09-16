@@ -1,12 +1,14 @@
 import re
 from typing import List, Optional
 
-import sqlalchemy as sa
-from sqlalchemy.orm import Session
+import sqlmodel as sm
+from sqlalchemy import func
+from sqlmodel import Session
 
 from api.config import GTDB_RELEASES
-from api.db.models import SurveyGenomes, GtdbWebTaxonHist, GtdbWebLpsnUrl, Genome, MetadataNcbi, MetadataGene, \
-    MetadataNucleotide, MetadataTaxonomy, MetadataTypeMaterial, GtdbWebGenomeTaxId, GtdbTypeView
+from api.db.gtdb import DbSurveyGenomes, DbGenomes, DbMetadataNcbi, DbMetadataGenes, DbMetadataNucleotide, \
+    DbMetadataTaxonomy, DbMetadataTypeMaterial, DbGtdbTypeView
+from api.db.gtdb_web import DbTaxonHist, DbLpsnUrl, DbGenomeTaxId
 from api.exceptions import HttpNotFound, HttpBadRequest
 from api.model.genome import GenomeMetadata, GenomeTaxonHistory, GenomeCard, GenomeBase, GenomeMetadataNucleotide, \
     GenomeMetadataGene, GenomeMetadataNcbi, GenomeMetadataTaxonomy, GenomeNcbiTaxon, GenomeMetadataTypeMaterial
@@ -19,32 +21,39 @@ def is_surveillance_genome(gid: str, db: Session) -> Optional[str]:
     # Check if this is a surveillance genome
     hit = RE_SURVEY.search(gid)
     if hit:
-        query = sa.select([SurveyGenomes.canonical_gid]).where(SurveyGenomes.canonical_gid.contains(hit.group(1)))
-        results = db.execute(query).fetchone()
+        query = sm.select(DbSurveyGenomes.canonical_gid).where(DbSurveyGenomes.canonical_gid.contains(hit.group(1)))
+        results = db.exec(query).first()
         if results:
-            return results.canonical_gid.strip()
+            return results.strip()
     return None
 
 
 def genome_metadata(gid: str, db: Session) -> GenomeMetadata:
     survey_hit = is_surveillance_genome(gid, db)
-    return GenomeMetadata(accession=survey_hit or gid,
-                          isNcbiSurveillance=survey_hit is not None)
+    return GenomeMetadata(
+        accession=survey_hit or gid,
+        isNcbiSurveillance=survey_hit is not None
+    )
 
 
 def genome_taxon_history(gid: str, db: Session) -> List[GenomeTaxonHistory]:
-    query = sa.select([GtdbWebTaxonHist.release_ver,
-                       GtdbWebTaxonHist.rank_domain,
-                       GtdbWebTaxonHist.rank_phylum,
-                       GtdbWebTaxonHist.rank_class,
-                       GtdbWebTaxonHist.rank_order,
-                       GtdbWebTaxonHist.rank_family,
-                       GtdbWebTaxonHist.rank_genus,
-                       GtdbWebTaxonHist.rank_species]) \
-        .where(sa.and_(GtdbWebTaxonHist.genome_id == canonical_gid(gid),
-                       GtdbWebTaxonHist.release_ver != 'NCBI'))
+    query = (
+        sm.select(
+            DbTaxonHist.release_ver,
+            DbTaxonHist.rank_domain,
+            DbTaxonHist.rank_phylum,
+            DbTaxonHist.rank_class,
+            DbTaxonHist.rank_order,
+            DbTaxonHist.rank_family,
+            DbTaxonHist.rank_genus,
+            DbTaxonHist.rank_species
+        )
+        .where(DbTaxonHist.genome_id == canonical_gid(gid))
+        .where(DbTaxonHist.release_ver != 'NCBI')
+
+    )
     out = list()
-    for row in db.execute(query):
+    for row in db.exec(query):
         out.append(GenomeTaxonHistory(release=row.release_ver.strip(),
                                       d=row.rank_domain,
                                       p=row.rank_phylum,
@@ -58,15 +67,15 @@ def genome_taxon_history(gid: str, db: Session) -> List[GenomeTaxonHistory]:
 
 def maybe_get_lspn_url(species: str, db_web: Session) -> Optional[str]:
     # Load the LSPN URL if it exists
-    query = sa.select([GtdbWebLpsnUrl.lpsn_url]).where(GtdbWebLpsnUrl.gtdb_species == species)
-    results = db_web.execute(query).fetchall()
+    query = sm.select(DbLpsnUrl.lpsn_url).where(DbLpsnUrl.gtdb_species == species)
+    results = db_web.exec(query).all()
     if len(results) == 1:
-        return results[0].lpsn_url
+        return results[0]
     else:
         return None
 
 
-def rank_count(rank, db_gtdb):
+def rank_count(rank, db_gtdb: Session):
     """Returns the number of genomes in a given GTDB rank."""
     if rank is None:
         raise HttpBadRequest('You must enter a GTDB rank.')
@@ -75,34 +84,37 @@ def rank_count(rank, db_gtdb):
         raise HttpBadRequest('Malformed GTDB rank.')
 
     # Determine which rank to query.
-    rank_to_col = {'d__': MetadataTaxonomy.gtdb_domain,
-                   'p__': MetadataTaxonomy.gtdb_phylum,
-                   'c__': MetadataTaxonomy.gtdb_class,
-                   'o__': MetadataTaxonomy.gtdb_order,
-                   'f__': MetadataTaxonomy.gtdb_family,
-                   'g__': MetadataTaxonomy.gtdb_genus,
-                   's__': MetadataTaxonomy.gtdb_species}
+    rank_to_col = {'d__': DbMetadataTaxonomy.gtdb_domain,
+                   'p__': DbMetadataTaxonomy.gtdb_phylum,
+                   'c__': DbMetadataTaxonomy.gtdb_class,
+                   'o__': DbMetadataTaxonomy.gtdb_order,
+                   'f__': DbMetadataTaxonomy.gtdb_family,
+                   'g__': DbMetadataTaxonomy.gtdb_genus,
+                   's__': DbMetadataTaxonomy.gtdb_species}
 
     # Query for the taxonomy history
     query = (
-        sa.select([sa.func.count('*')]).
-        select_from(MetadataTaxonomy).
+        sm.select(func.count('*')).
+        select_from(DbMetadataTaxonomy).
         where(rank_to_col[rank[0:3]] == rank)
     )
-    cnt = db_gtdb.execute(query).scalar()
+    cnt = db_gtdb.exec(query).first()
     return {'count': cnt}
 
 
-def taxonomy_species_cluster_stats(species, db_gtdb):
+def taxonomy_species_cluster_stats(species, db_gtdb: Session):
     res_rep_qry = (
-        sa.select([MetadataNcbi.ncbi_genbank_assembly_accession.label('name'),
-                   MetadataTaxonomy.gtdb_representative]).
-        select_from(sa.join(Genome, MetadataTaxonomy).join(MetadataNcbi)).
-        where(MetadataTaxonomy.gtdb_species == species).
-        where(MetadataTaxonomy.gtdb_genome_representative != None)
+        sm.select(
+            DbMetadataNcbi.ncbi_genbank_assembly_accession.label('name'),
+            DbMetadataTaxonomy.gtdb_representative
+        )
+        .join(DbGenomes, DbGenomes.id == DbMetadataNcbi.id)
+        .join(DbMetadataTaxonomy, DbMetadataTaxonomy.id == DbGenomes.id)
+        .where(DbMetadataTaxonomy.gtdb_species == species)
+        .where(DbMetadataTaxonomy.gtdb_genome_representative != None)
     )
-    qry_out = db_gtdb.execute(res_rep_qry)
-    rows = [(dict(row)) for row in qry_out]
+    qry_out = db_gtdb.exec(res_rep_qry).all()
+    rows = [row._asdict() for row in qry_out]
     cluster_size = len(rows)
 
     rep = [x for x in rows if x['gtdb_representative']]
@@ -114,23 +126,27 @@ def taxonomy_species_cluster_stats(species, db_gtdb):
 
 
 def genome_card(accession: str, db_gtdb: Session, db_web: Session) -> GenomeCard:
-    genome = db_gtdb.query(Genome).filter_by(id_at_source=accession).first()
+    # Look through multiple tables to try find a matching record
+    genome = db_gtdb.exec(sm.select(DbGenomes).where(DbGenomes.id_at_source == accession)).first()
     if genome is None:
-        metadata_ncbi_gca = db_gtdb.query(MetadataNcbi).filter_by(ncbi_genbank_assembly_accession=accession).first()
+        metadata_ncbi_gca = db_gtdb.exec(
+            sm.select(DbMetadataNcbi).where(DbMetadataNcbi.ncbi_genbank_assembly_accession == accession)).first()
         if metadata_ncbi_gca is not None:
-            genome = db_gtdb.query(Genome).filter_by(id=metadata_ncbi_gca.id).first()
-            genome = db_gtdb.query(Genome).filter_by(id_at_source=genome.id_at_source).first()
+            genome = db_gtdb.exec(sm.select(DbGenomes).where(DbGenomes.id == metadata_ncbi_gca.id).first())
+            genome = db_gtdb.exec(sm.select(DbGenomes).where(DbGenomes.id_at_source == genome.id_at_source)).first()
     if genome is None:
-        genome = db_gtdb.query(Genome).filter(Genome.name.like("%({0})".format(accession))).first()
+        genome = db_gtdb.exec(sm.select(DbGenomes).where(DbGenomes.name.ilike(f'%({accession})%'))).first()
     if genome is None:
         raise HttpNotFound('Genome not found')
 
-    metadata_gene = db_gtdb.query(MetadataGene).filter_by(id=genome.id).first()
-    metadata_ncbi = db_gtdb.query(MetadataNcbi).filter_by(id=genome.id).first()
-    metadata_nucleotide = db_gtdb.query(MetadataNucleotide).filter_by(id=genome.id).first()
-    metadata_taxonomy = db_gtdb.query(MetadataTaxonomy).filter_by(id=genome.id).first()
-    metadata_type_material = db_gtdb.query(MetadataTypeMaterial).filter_by(id=genome.id).first()
-    gtdb_type_view = db_gtdb.query(GtdbTypeView).filter_by(id=genome.id).first()
+    metadata_gene = db_gtdb.exec(sm.select(DbMetadataGenes).where(DbMetadataGenes.id == genome.id)).first()
+    metadata_ncbi = db_gtdb.exec(sm.select(DbMetadataNcbi).where(DbMetadataNcbi.id == genome.id)).first()
+    metadata_nucleotide = db_gtdb.exec(
+        sm.select(DbMetadataNucleotide).where(DbMetadataNucleotide.id == genome.id)).first()
+    metadata_taxonomy = db_gtdb.exec(sm.select(DbMetadataTaxonomy).where(DbMetadataTaxonomy.id == genome.id)).first()
+    metadata_type_material = db_gtdb.exec(
+        sm.select(DbMetadataTypeMaterial).where(DbMetadataTypeMaterial.id == genome.id)).first()
+    gtdb_type_view = db_gtdb.exec(sm.select(DbGtdbTypeView).where(DbGtdbTypeView.id == genome.id)).first()
 
     m = re.search('\((UBA\d+)\)', genome.name)
     subunit_summary_list = []
@@ -148,7 +164,7 @@ def genome_card(accession: str, db_gtdb: Session, db_web: Session) -> GenomeCard
         ubanumber = ''
     try:
         species_cluster_count = rank_count(metadata_taxonomy.gtdb_species, db_gtdb)['count']
-    except Exception:
+    except Exception as e:
         species_cluster_count = None
 
     # Get the species representative.
@@ -161,7 +177,7 @@ def genome_card(accession: str, db_gtdb: Session, db_web: Session) -> GenomeCard
     # Load the LSPN URL if it exists
     lpsn_url = maybe_get_lspn_url(metadata_taxonomy.gtdb_species, db_web)
 
-    taxid_resp = db_web.query(GtdbWebGenomeTaxId).filter_by(genome_id=genome.id_at_source).all()
+    taxid_resp = db_web.exec(sm.select(DbGenomeTaxId).where(DbGenomeTaxId.genome_id == genome.id_at_source)).all()
 
     ncbi_taxonomy_filtered = list()
     ncbi_taxonomy_unfiltered = list()

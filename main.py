@@ -15,14 +15,14 @@ from fastapi.responses import PlainTextResponse
 
 from api import __version__
 from api.config import Env, ENV_NAME
-from api.view import fastani, taxonomy, species, taxon, sankey, search, genome, advanced, util, genomes, status, meta, \
-    sitemap, taxa
+from api.view import taxonomy, species, taxon, sankey, search, genome, advanced, util, genomes, status, meta, \
+    sitemap, taxa, ani, skani
 
 # Documentation
 tags_metadata = [
     {
-        "name": "fastani",
-        "description": "Perform ANI comparisons on RefSeq and GenBank genomes using [FastANI](https://github.com/ParBLiSS/FastANI).",
+        "name": "skani",
+        "description": "Perform ANI comparisons on RefSeq and GenBank genomes using skani.",
     },
     {
         "name": "taxonomy",
@@ -77,6 +77,7 @@ tags_metadata = [
         "description": "Returns information about the state of the web services."
     }
 ]
+tags_metadata = sorted(tags_metadata, key=lambda x: x['name'])
 
 # Initialise the app
 app = FastAPI(title='GTDB API',
@@ -93,7 +94,6 @@ app = FastAPI(title='GTDB API',
               openapi_tags=tags_metadata)
 
 # Add routes
-app.include_router(fastani.router)
 app.include_router(species.router)
 app.include_router(taxon.router)
 app.include_router(taxonomy.router)
@@ -107,6 +107,7 @@ app.include_router(status.router)
 app.include_router(meta.router)
 app.include_router(sitemap.router)
 app.include_router(taxa.router)
+app.include_router(skani.router)
 
 # Add CORS
 if ENV_NAME is Env.LOCAL:

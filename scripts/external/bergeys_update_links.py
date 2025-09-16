@@ -83,8 +83,6 @@ Follow the process below in order to update the Bergey's links.
 
 5. Additionally, run the following SQL script in the GTDB website database to generate a list of taxa:
 
-
-
 """
 
 
