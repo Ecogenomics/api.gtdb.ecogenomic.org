@@ -7,13 +7,13 @@ license = "GPL-3"
 package-mode = false
 
 [tool.poetry.dependencies]
-python = ">=3.11,<3.12"
+python = ">=3.13,<3.14"
 rq = "^2.6.0"
 redis = "^6.4.0"
 hiredis = "^3.2.1"
-fastapi = "^0.117.1"
+fastapi = "0.118.0"
 pydantic = "^2.11.9"
-uvicorn = "^0.35.0"
+uvicorn = "0.37.0"
 python-dotenv = "^1.0.0"
 psycopg2-binary = "^2.9.5"
 vtracker = "^1.0.1"
