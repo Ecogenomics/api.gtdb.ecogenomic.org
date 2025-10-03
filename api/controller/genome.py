@@ -148,7 +148,7 @@ def genome_card(accession: str, db_gtdb: Session, db_web: Session) -> GenomeCard
         sm.select(DbMetadataTypeMaterial).where(DbMetadataTypeMaterial.id == genome.id)).first()
     gtdb_type_view = db_gtdb.exec(sm.select(DbGtdbTypeView).where(DbGtdbTypeView.id == genome.id)).first()
 
-    m = re.search('\((UBA\d+)\)', genome.name)
+    m = re.search(r'\((UBA\d+)\)', genome.name)
     subunit_summary_list = []
 
     if metadata_gene.lsu_5s_count > 0:
