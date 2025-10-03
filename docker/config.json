@@ -6,7 +6,7 @@
   },
   "applications": {
     "fastapi": {
-      "type": "python 3.11",
+      "type": "python 3.13",
       "processes": 4,
       "path": "/api",
       "home": "/usr/local",
