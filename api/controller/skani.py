@@ -132,10 +132,17 @@ async def skani_create_job(
     d_file_content = dict()
     if uploaded_files is not None and len(uploaded_files) > 0:
         for cur_file in uploaded_files:
-            d_file_content[cur_file.filename] = await read_upload_file_bytes_limit(
-                cur_file,
-                ani_user_max_file_size_bytes
-            )
+
+            # Attempt to read the file
+            try:
+                d_file_content[cur_file.filename] = await read_upload_file_bytes_limit(
+                    cur_file,
+                    ani_user_max_file_size_bytes
+                )
+            except UnicodeDecodeError:
+                raise HttpBadRequest(f'Unable to read {cur_file.filename}, not a text file.')
+            except Exception:
+                raise HttpInternalServerError(f'Unable to read {cur_file.filename}, please try again.')
 
     # If user genomes have been supplied, then extract their names
     user_genome_ids = set(d_file_content.keys())
