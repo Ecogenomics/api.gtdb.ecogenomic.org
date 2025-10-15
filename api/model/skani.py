@@ -253,6 +253,14 @@ class SkaniResultTableRow(BaseModel):
     afQry: float | None = Field(None)
     afRef: float | None = Field(None)
 
+    @staticmethod
+    def get_column_names() -> List[str]:
+        return ['query', 'reference', 'ani', 'af_query', 'af_reference']
+
+    def to_row(self):
+        return [self.qry, self.ref, self.ani, self.afQry, self.afRef]
+
+
 
 class SkaniJobDataTableResponse(BaseModel):
     jobId: str = Field(...)

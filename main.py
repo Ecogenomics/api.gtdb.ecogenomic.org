@@ -14,9 +14,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
 
 from api import __version__
-from api.config import Env, ENV_NAME
-from api.view import taxonomy, species, taxon, sankey, search, genome, advanced, util, genomes, status, meta, \
-    sitemap, taxa, ani, skani
+from api.config import ENV_NAME, Env
+from api.view import (
+    advanced, genome, genomes, meta, sankey, search, sitemap, skani, species, status, taxa, taxon, taxonomy, util
+)
 
 # Documentation
 tags_metadata = [
@@ -80,18 +81,20 @@ tags_metadata = [
 tags_metadata = sorted(tags_metadata, key=lambda x: x['name'])
 
 # Initialise the app
-app = FastAPI(title='GTDB API',
-              version=__version__,
-              docs_url='/',
-              description=f'<p>Although this API was initially created for use exclusively by the GTDB website, we welcome '
-                          f'and encourage you to utilize it for your own purposes.</p>'
-                          f'<p>We plan to expand our documentation in the near future to provide you with even more helpful information.</p>'
-                          f'<p>It is important to note that a significant portion of the available data can be downloaded as a flat file from our downloads page, so we kindly ask that you consider this before resorting to scraping.</p>'
-                          f'<ul>'
-                          f'<li><a href="https://github.com/Ecogenomics/api.gtdb.ecogenomic.org" target="_blank">GitHub repository</a><br></li>'
-                          f'<li><a href="https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/blob/main/CHANGELOG.md" target="_blank">CHANGELOG</a></li>'
-                          f'</ul>',
-              openapi_tags=tags_metadata)
+app = FastAPI(
+    title='GTDB API',
+    version=__version__,
+    docs_url='/',
+    description=f'<p>Although this API was initially created for use exclusively by the GTDB website, we welcome '
+                f'and encourage you to utilize it for your own purposes.</p>'
+                f'<p>We plan to expand our documentation in the near future to provide you with even more helpful information.</p>'
+                f'<p>It is important to note that a significant portion of the available data can be downloaded as a flat file from our downloads page, so we kindly ask that you consider this before resorting to scraping.</p>'
+                f'<ul>'
+                f'<li><a href="https://github.com/Ecogenomics/api.gtdb.ecogenomic.org" target="_blank">GitHub repository</a><br></li>'
+                f'<li><a href="https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/blob/main/CHANGELOG.md" target="_blank">CHANGELOG</a></li>'
+                f'</ul>',
+    openapi_tags=tags_metadata
+    )
 
 # Add routes
 app.include_router(species.router)
@@ -111,20 +114,26 @@ app.include_router(skani.router)
 
 # Add CORS
 if ENV_NAME is Env.LOCAL:
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=['*'],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+    cors_origins = ['http://localhost:3000']
     port = 9000
 elif ENV_NAME is Env.PROD:
+    cors_origins = ['http://gtdb.ecogenomic.org', 'https://gtdb.ecogenomic.org']
     port = 9000
 elif ENV_NAME is Env.DEV:
+    cors_origins = ['http://gtdb-dev.ecogenomic.org', 'https://gtdb-dev.ecogenomic.org']
     port = 9001
 else:
+    cors_origins = list()
     port = 9000
+
+# Add CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 async def send_request_to_plausible(request: Request):

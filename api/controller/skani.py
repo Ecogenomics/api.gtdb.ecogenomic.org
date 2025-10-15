@@ -20,7 +20,7 @@ from api.exceptions import HttpBadRequest, HttpInternalServerError, HttpNotFound
 from api.model.skani import (
     SkaniCalculationMode, SkaniCreatedJobResponse, SkaniJobDataHeatmapResponse, SkaniJobDataIndexResponse,
     SkaniJobDataTableResponse,
-    SkaniJobHeatmapData, SkaniJobRequest, SkaniJobStatusResponse, SkaniJobUploadMetadata, SkaniParameters,
+    SkaniJobRequest, SkaniJobStatusResponse, SkaniJobUploadMetadata, SkaniParameters,
     SkaniResultTableRow,
     SkaniValidateGenomesRequest,
     SkaniValidateGenomesResponse, SkaniVersion, UtilSkaniJobResults
@@ -520,6 +520,7 @@ def get_job_data_index_page(job_name: str, db_gtdb: Session, db_common: Session)
 def get_job_data_table_page(
         job_id_str: str,
         get_nulls: bool,
+        get_self: bool,
         db_common: Session
 ) -> SkaniJobDataTableResponse:
     query = (
@@ -574,6 +575,10 @@ def get_job_data_table_page(
         qry_name = d_genome_id_to_name[qry_gid]
         for ref_idx, ref_gid in enumerate(job_results.ref_ids):
             ref_name = d_genome_id_to_name[ref_gid]
+
+            # Skip self matches if the user doesn't want them
+            if not get_self and qry_gid == ref_gid:
+                continue
 
             # Collect the values
             cur_ani = round(float(job_results.ani[qry_idx, ref_idx]), 2)
@@ -987,10 +992,10 @@ def skani_get_heatmap(
     y_species = [gid_to_species.get(x, 'n/a') for x in y_labels]
 
     # Re-format the clustered matrix into the output
-    out_ani , out_af= list(), list()
+    out_ani, out_af = list(), list()
     for y_idx, (y_label, y_gid) in enumerate(zip(y_labels, y_gids)):
         qry_idx_original = d_gid_to_qry_index[y_gid]
-        cur_ani_row , cur_af_row= list(), list()
+        cur_ani_row, cur_af_row = list(), list()
         for x_idx, (x_label, x_gid) in enumerate(zip(x_labels, x_gids)):
             ref_idx_original = d_gid_to_ref_index[x_gid]
             if cluster_by == 'af':

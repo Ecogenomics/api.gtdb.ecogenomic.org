@@ -1,20 +1,22 @@
 import json
 from typing import Annotated, List, Literal
 
-from fastapi import APIRouter, File, Form, Path, UploadFile, Query
-from fastapi.responses import Response
+from fastapi import APIRouter, File, Form, Path, Query, UploadFile
+from fastapi.responses import Response, StreamingResponse
 
 from api.controller.skani import (
     ani_validate_genomes, get_job_data_index_page, get_job_data_table_page,
     get_job_id_status, skani_create_job, skani_get_heatmap
 )
 from api.db import GtdbCommonDbDep, GtdbDbDep
+from api.exceptions import HttpBadRequest
 from api.model.skani import (
     SkaniCreatedJobResponse, SkaniJobDataHeatmapResponse, SkaniJobDataIndexResponse, SkaniJobDataTableResponse,
     SkaniJobRequest,
-    SkaniJobStatusResponse, SkaniJobUploadMetadata, SkaniServerConfig,
+    SkaniJobStatusResponse, SkaniJobUploadMetadata, SkaniResultTableRow, SkaniServerConfig,
     SkaniValidateGenomesRequest, SkaniValidateGenomesResponse
 )
+from api.util.io import rows_to_delim
 
 router = APIRouter(prefix='/skani', tags=['skani'])
 
@@ -104,6 +106,9 @@ def v_skani_get_job_id_table(
         showNa: Annotated[bool, Query(
             description='If no-hits (distant) should be shown.',
         )] = False,
+        showSelf: Annotated[bool, Query(
+            description='If self-hits should be shown.',
+        )] = False,
 ):
     # # Parse the sort_by and sort_desc parameters into lists
     # if sort_by is not None:
@@ -111,12 +116,11 @@ def v_skani_get_job_id_table(
     # if sort_desc is not None:
     #     sort_desc = [x.strip().lower() == 'true' for x in sort_desc.split(',')]
 
-    data = get_job_data_table_page(jobId, showNa, db_common)
+    data = get_job_data_table_page(jobId, showNa, showSelf, db_common)
     if data.completed is not True:
         # Add this header if the job is still processing
         response.headers["Cache-Control"] = "no-cache, no-store, max-age=0"
     return data
-
 
 
 @router.get(
@@ -139,7 +143,6 @@ def v_skani_get_job_id_status(
         # Add this header if the job is still processing
         response.headers["Cache-Control"] = "no-cache, no-store, max-age=0"
     return data
-
 
 
 @router.get(
@@ -166,3 +169,54 @@ def v_get_job_id_heatmap(
     if not data.completed:
         response.headers["Cache-Control"] = "no-cache, no-store, max-age=0"
     return data
+
+
+@router.get(
+    '/job/{jobId}/table/download',
+    response_class=StreamingResponse,
+    summary='Download the result of a skani job in delimited format.'
+)
+def v_get_job_id_download(
+        jobId: Annotated[str, Path(
+            ...,
+            max_length=8,
+            description='The job id to search.',
+            example='3d015dc2',
+        )],
+        db: GtdbCommonDbDep,
+        showNa: Annotated[bool, Query(
+            description='If no-hits (distant) should be shown.',
+        )] = False,
+        showSelf: Annotated[bool, Query(
+            description='If self-hits should be shown.',
+        )] = False,
+        fmt: Annotated[Literal['csv', 'tsv'], Query(
+            ...,
+            description='The format to download.',
+            example='tsv',
+        )] = 'tsv',
+):
+    # Convert to delimiter
+    if fmt == 'tsv':
+        delim = '\t'
+    else:
+        delim = ','
+
+    # Get the rows
+    data = get_job_data_table_page(jobId, showNa, showSelf, db)
+
+    # Early exit if not completed
+    if data.completed is not True:
+        raise HttpBadRequest(f'Job {jobId} is not yet completed.')
+
+    # Convert rows to expected format
+    rows = list()
+    rows.append(SkaniResultTableRow.get_column_names())
+    for row in data.rows:
+        rows.append(row.to_row())
+
+    # Create the output
+    stream = rows_to_delim(rows, delim=delim)
+    response = StreamingResponse(iter([stream]), media_type="text/csv")
+    response.headers["Content-Disposition"] = f"attachment; filename=gtdb-fastani-{jobId}.{fmt}"
+    return response
