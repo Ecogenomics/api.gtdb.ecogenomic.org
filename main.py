@@ -117,10 +117,10 @@ if ENV_NAME is Env.LOCAL:
     cors_origins = ['http://localhost:3000']
     port = 9000
 elif ENV_NAME is Env.PROD:
-    cors_origins = ['http://gtdb.ecogenomic.org', 'https://gtdb.ecogenomic.org']
+    cors_origins = ['https://gtdb.ecogenomic.org']
     port = 9000
 elif ENV_NAME is Env.DEV:
-    cors_origins = ['http://gtdb-dev.ecogenomic.org', 'https://gtdb-dev.ecogenomic.org']
+    cors_origins = ['https://gtdb-dev.ecogenomic.org']
     port = 9001
 else:
     cors_origins = list()
