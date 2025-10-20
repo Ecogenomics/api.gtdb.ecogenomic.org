@@ -94,7 +94,7 @@ app = FastAPI(
                 f'<li><a href="https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/blob/main/CHANGELOG.md" target="_blank">CHANGELOG</a></li>'
                 f'</ul>',
     openapi_tags=tags_metadata
-    )
+)
 
 # Add routes
 app.include_router(species.router)
@@ -112,30 +112,37 @@ app.include_router(sitemap.router)
 app.include_router(taxa.router)
 app.include_router(skani.router)
 
-# # Add CORS
-# if ENV_NAME is Env.LOCAL:
-#     cors_origins = ['http://localhost:3000']
-#     port = 9000
-# elif ENV_NAME is Env.PROD:
-#     cors_origins = ['https://gtdb.ecogenomic.org']
-#     port = 9000
-# elif ENV_NAME is Env.DEV:
-#     cors_origins = ['https://gtdb-dev.ecogenomic.org']
-#     port = 9001
-# else:
-#     cors_origins = list()
-#     port = 9000
-#
-# print(f'ENV_NAME: {ENV_NAME}, CORS: {cors_origins}, PORT: {port}')
-#
-# # Add CORS
-# app.add_middleware(
-#     CORSMiddleware,
-#     allow_origins=cors_origins,
-#     allow_credentials=True,
-#     allow_methods=["*"],
-#     allow_headers=["*"],
-# )
+# Add CORS
+if ENV_NAME is Env.LOCAL:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=['*'],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    port = 9000
+elif ENV_NAME is Env.PROD:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=['https://gtdb.ecogenomic.org'],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    port = 9000
+
+elif ENV_NAME is Env.DEV:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=['https://gtdb-dev.ecogenomic.org'],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    port = 9001
+else:
+    port = 9000
 
 
 async def send_request_to_plausible(request: Request):
@@ -209,4 +216,4 @@ async def v_favicon():
 
 # If running locally
 if __name__ == "__main__":
-    uvicorn.run('main:app', host="0.0.0.0", port=port, reload=True)
+    uvicorn.run('main:app', host="127.0.0.1", port=port, reload=True)

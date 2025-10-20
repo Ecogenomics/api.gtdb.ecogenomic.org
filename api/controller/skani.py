@@ -163,7 +163,7 @@ async def skani_create_job(
     if request.calcMode is SkaniCalculationMode.QVR:
         if n_query_genomes_total == 0 or n_ref_genomes_total == 0:
             raise HttpBadRequest(
-                'No comparisons could be made as either all genomes in the query or reference list are not in the database. Uploaded genomes will need to upload them again.'
+                'No comparisons could be made as either all genomes in the query or reference list are not in the database. Uploaded genomes will need to be uploaded again.'
             )
     elif request.calcMode is SkaniCalculationMode.TRIANGLE:
         if n_query_genomes_total == 0:
@@ -982,8 +982,12 @@ def skani_get_heatmap(
 
     # Cluster the matrix depending on the clustering method
     if cluster_by == 'af':
+        if arr_af.size < 2:
+            raise HttpBadRequest('Not enough data to cluster by AF.')
         matrix, dendro_x, dendro_y = cluster_matrix(arr_af)
     else:
+        if arr_af.size < 2:
+            raise HttpBadRequest('Not enough data to cluster by ANI.')
         matrix, dendro_x, dendro_y = cluster_matrix(arr_ani)
 
     # Create the output and re-order according to the clustering
