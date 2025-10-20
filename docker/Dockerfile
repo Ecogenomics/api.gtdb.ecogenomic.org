@@ -1,14 +1,14 @@
 # https://hub.docker.com/_/unit
-FROM unit:1.34.2-python3.13
+FROM nginx:1.29-alpine
 
-# Install dependencies
-RUN apt update -y -m && \
-    DEBIAN_FRONTEND=noninteractive \
-    apt install --no-install-recommends --no-install-suggests -y \
-        libpq-dev \
-        gcc && \
-    apt clean && \
-    rm -rf /var/lib/apt/lists/*
+## Install dependencies
+#RUN apt update -y -m && \
+#    DEBIAN_FRONTEND=noninteractive \
+#    apt install --no-install-recommends --no-install-suggests -y \
+#        libpq-dev \
+#        gcc && \
+#    apt clean && \
+#    rm -rf /var/lib/apt/lists/*
 
 # Copy across the application, setup NGINX, and install Poetry
 COPY . /api
