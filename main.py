@@ -123,23 +123,9 @@ if ENV_NAME is Env.LOCAL:
     )
     port = 9000
 elif ENV_NAME is Env.PROD:
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=['https://gtdb.ecogenomic.org'],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
     port = 9000
 
 elif ENV_NAME is Env.DEV:
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=['https://gtdb-dev.ecogenomic.org'],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
     port = 9001
 else:
     port = 9000
