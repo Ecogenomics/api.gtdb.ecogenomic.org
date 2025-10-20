@@ -981,44 +981,61 @@ def skani_get_heatmap(
                 arr_af[qry_idx, ref_idx] = max(af_qry, af_ref)
 
     # Cluster the matrix depending on the clustering method
-    if cluster_by == 'af':
-        if arr_af.size < 2:
-            raise HttpBadRequest('Not enough data to cluster by AF.')
-        matrix, dendro_x, dendro_y = cluster_matrix(arr_af)
-    else:
-        if arr_af.size < 2:
-            raise HttpBadRequest('Not enough data to cluster by ANI.')
-        matrix, dendro_x, dendro_y = cluster_matrix(arr_ani)
+    try:
+        if cluster_by == 'af':
+            matrix, dendro_x, dendro_y = cluster_matrix(arr_af)
+        else:
+            matrix, dendro_x, dendro_y = cluster_matrix(arr_ani)
 
-    # Create the output and re-order according to the clustering
-    x_labels, y_labels = list(), list()
-    x_gids, y_gids = list(), list()
-    for x in dendro_x['leaves']:
-        x_gids.append(job_results.ref_ids[x])
-        x_labels.append(genome_id_to_name[job_results.ref_ids[x]])
-    for y in dendro_y['leaves']:
-        y_gids.append(job_results.qry_ids[y])
-        y_labels.append(genome_id_to_name[job_results.qry_ids[y]])
-    x_species = [gid_to_species.get(x, 'n/a') for x in x_labels]
-    y_species = [gid_to_species.get(x, 'n/a') for x in y_labels]
+        # Create the output and re-order according to the clustering
+        x_labels, y_labels = list(), list()
+        x_gids, y_gids = list(), list()
+        for x in dendro_x['leaves']:
+            x_gids.append(job_results.ref_ids[x])
+            x_labels.append(genome_id_to_name[job_results.ref_ids[x]])
+        for y in dendro_y['leaves']:
+            y_gids.append(job_results.qry_ids[y])
+            y_labels.append(genome_id_to_name[job_results.qry_ids[y]])
+        x_species = [gid_to_species.get(x, 'n/a') for x in x_labels]
+        y_species = [gid_to_species.get(x, 'n/a') for x in y_labels]
 
-    # Re-format the clustered matrix into the output
-    out_ani, out_af = list(), list()
-    for y_idx, (y_label, y_gid) in enumerate(zip(y_labels, y_gids)):
-        qry_idx_original = d_gid_to_qry_index[y_gid]
-        cur_ani_row, cur_af_row = list(), list()
-        for x_idx, (x_label, x_gid) in enumerate(zip(x_labels, x_gids)):
-            ref_idx_original = d_gid_to_ref_index[x_gid]
-            if cluster_by == 'af':
-                ani = round(float(arr_ani[qry_idx_original, ref_idx_original]), 2)  # remove np floating decimals
-                af = round(float(matrix[y_idx, x_idx]), 2)
-            else:
-                ani = round(float(matrix[y_idx, x_idx]), 2)
-                af = round(float(arr_af[qry_idx_original, ref_idx_original]), 2)
-            cur_ani_row.append(ani)
-            cur_af_row.append(af)
-        out_ani.append(cur_ani_row)
-        out_af.append(cur_af_row)
+        # Re-format the clustered matrix into the output
+        out_ani, out_af = list(), list()
+        for y_idx, (y_label, y_gid) in enumerate(zip(y_labels, y_gids)):
+            qry_idx_original = d_gid_to_qry_index[y_gid]
+            cur_ani_row, cur_af_row = list(), list()
+            for x_idx, (x_label, x_gid) in enumerate(zip(x_labels, x_gids)):
+                ref_idx_original = d_gid_to_ref_index[x_gid]
+                if cluster_by == 'af':
+                    ani = round(float(arr_ani[qry_idx_original, ref_idx_original]), 2)  # remove np floating decimals
+                    af = round(float(matrix[y_idx, x_idx]), 2)
+                else:
+                    ani = round(float(matrix[y_idx, x_idx]), 2)
+                    af = round(float(arr_af[qry_idx_original, ref_idx_original]), 2)
+                cur_ani_row.append(ani)
+                cur_af_row.append(af)
+            out_ani.append(cur_ani_row)
+            out_af.append(cur_af_row)
+
+    except ValueError:
+        # This can happen if there are empty values in the matrix
+        print('sparse matrix')
+
+        x_labels, y_labels = list(), list()
+        x_species, y_species = list(), list()
+        for qry_idx, qry_id in enumerate(job_results.qry_ids):
+            qry_name = genome_id_to_name[qry_id]
+            y_labels.append(qry_name)
+            y_species.append(gid_to_species.get(qry_name, 'n/a'))
+        for ref_idx, ref_id in enumerate(job_results.ref_ids):
+            ref_name = genome_id_to_name[ref_id]
+            x_labels.append(ref_name)
+            x_species.append(gid_to_species.get(ref_name, 'n/a'))
+
+        out_ani, out_af = list(), list()
+        for y_idx in range(len(job_results.qry_ids)):
+            out_ani.append([round(float(x), 2) for x in arr_ani[y_idx, :]])
+            out_af.append([round(float(x), 2) for x in arr_af[y_idx, :]])
 
     return SkaniJobDataHeatmapResponse(
         jobId=job_name,
