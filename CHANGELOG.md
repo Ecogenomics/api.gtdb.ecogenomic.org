@@ -1,3 +1,10 @@
+## [2.24.1](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.24.0...v2.24.1) (2025-11-12)
+
+
+### Bug Fixes
+
+* **taxon:** Database update to correct s__Haloarcula marismortui being incorrectly labelled type material. ([b0c5c07](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/b0c5c07ea6e799c47f1cdd949cc51c49e08600d7))
+
 # [2.24.0](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.23.0...v2.24.0) (2025-08-29)
 
 
