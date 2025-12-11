@@ -1,3 +1,25 @@
+# [2.25.0](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.24.1...v2.25.0) (2025-12-11)
+
+
+### Bug Fixes
+
+* **build:** Update poetry to match NGINX unit. ([d335074](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/d335074f3d39f40a8e77ee0e593f1c4497e038c7))
+* **build:** Update poetry to match NGINX unit. ([4ca4658](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/4ca4658519af3d9f790eff7dc744959352dc87ef))
+* **build:** Update poetry to match NGINX unit. ([57f0376](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/57f0376037e93e41da5e753f4c632562ede5b426))
+* **cors:**  Remove doubled definition. ([77f5168](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/77f5168673ea25dd160a4c66877666b401c23565))
+* **cors:** Remove fastapi cors. ([f6aec76](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/f6aec765b1c12574e9538d7a157c4596f3a208f2))
+* **skani:**  Allow user uploading. ([13bbf78](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/13bbf78ca488d9f1cfded51ca4ff0e0138a5376b))
+* **skani:** Visualise heatmap on clustering sparse matrix. ([4e38902](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/4e38902df4c2d56771e38fe92aed84c22461bdf0))
+* **upload:** Error handling for file upoads. ([84b7526](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/84b7526cdb2ce6e2e1e75118ffc6d9e507cad0fd))
+
+
+### Features
+
+* **ani:** Add missing features. ([c39360b](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/c39360be13aac4b4a0186b1ba279cc5265cf8972))
+* **ani:** Add missing features. ([b75cd25](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/b75cd25b5bf3abddf807b942947a0e3141d81d96))
+* **ani:** Update ANI calculator for skani. ([12388a9](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/12388a99085e95d46aefa2ab151bdc50a1656289))
+* **skani:** Add skani model definition. ([9fd85db](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/9fd85dbb6c0c3d529ea6f1aa1446e215b9b7ea56))
+
 ## [2.24.1](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.24.0...v2.24.1) (2025-11-12)
 
 
