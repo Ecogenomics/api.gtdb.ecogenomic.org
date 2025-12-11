@@ -73,4 +73,13 @@ There are a few steps involved in this process, it is not fully automated. The b
 
 - [R220 to R226](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.20.4...v2.21.1)
 
+### API updates
 
+- In the `config.py` folder, the `GTDB_RELEASES` and `CURRENT_RELEASE` need to be updated.
+
+### Database updates
+
+**Taxon history:**
+
+- Within the website database, the materialized view `taxon_history_mtview` needs to be updated so that the new release is included. It's very important to keep the last part of the crosstab query (the columns) in alphabetical order, i.e. the `AS ct(...)` part.
+- This also requires an update in the `api/db/gtdb_web.py` file to reflect the new schema.

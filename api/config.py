@@ -30,7 +30,6 @@ POSTGRES_PASS = os.environ.get('POSTGRES_PASS', '')
 # ------------------------------------------------------------------------------
 CACHE_DIR: Path | None = Path(os.environ['CACHE_DIR']) if os.environ.get('CACHE_DIR') else None
 
-
 # ------------------------------------------------------------------------------
 # RedisQueue
 # ------------------------------------------------------------------------------
@@ -85,7 +84,13 @@ FASTANI_DB_PASS = os.environ.get('FASTANI_DB_PASS')
 FASTANI_DB_NAME = os.environ.get('FASTANI_DB_NAME')
 
 # Maximum number of pairwise comparisons in a single job
-FASTANI_MAX_PAIRWISE = 3000
+FASTANI_MAX_PAIRWISE = 3000  # TODO: Remove
+ANI_MAX_PAIRWISE = 500**2
+ANI_USER_MAX_FILE_SIZE_MB_EACH = 20
+ANI_USER_MAX_FILE_COUNT = 10
+ANI_USER_MAX_FILE_NAME_LENGTH = 200
+ANI_QUEUE_MAX_PENDING_JOBS = 1000
+ANI_JOB_ID_MAX_VALUE = 2**32-1
 
 # Maximum runtime before job is marked as failed (seconds)
 FASTANI_JOB_TIMEOUT = '10m'
@@ -102,6 +107,12 @@ FASTANI_JOB_RETRY = Retry(max=3)
 # Root directory where all NCBI genomes exist
 FASTANI_GENOME_DIR = os.environ.get('FASTANI_GENOME_DIR')
 
-# GTDB releases
+# GTDB releases (the order must be preserved, with NCBI last)
 GTDB_RELEASES = ('R80', 'R83', 'R86.2', 'R89', 'R95', 'R202', 'R207', 'R214', 'R220', 'R226', 'NCBI')
+CURRENT_RELEASE = 'R226'
 
+SITEMAP_PAGES = [
+    'about', 'advanced', 'attributions', 'browsers', 'contact', 'downloads', 'faq', 'gsc', 'methods', 'searches',
+    'tools/ani', 'stats/r89', 'stats/r95', 'stats/r202', 'stats/r207', 'stats/r214', 'stats/r220', 'stats/r226',
+    'taxon-history', 'tools', 'tree'
+]

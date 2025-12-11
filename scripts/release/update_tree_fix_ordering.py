@@ -7,7 +7,7 @@ from collections import defaultdict
 import sqlalchemy as sa
 
 from api.db import GtdbWebSession
-from api.db.models import DbGtdbTreeChildren
+# from api.db.models import DbGtdbTreeChildren
 
 TS_SPECIES = frozenset({'type_strain_of_species', 'type_strain_of_heterotypic_synonym', 'type_strain_of_subspecies'})
 

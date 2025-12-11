@@ -18,7 +18,7 @@ import sqlalchemy as sa
 from tqdm import tqdm
 
 from api.db import GtdbFastaniSession
-from api.db.models import GtdbFastaniGenome
+# from api.db.models import GtdbFastaniGenome
 
 CPUS = 10
 

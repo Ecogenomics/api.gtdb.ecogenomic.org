@@ -16,7 +16,7 @@ from requests.adapters import HTTPAdapter, Retry
 from tqdm import tqdm
 
 from api.db import GtdbWebSession
-from api.db.models import DbGtdbTree
+# from api.db.models import DbGtdbTree
 
 RE_PAGE_LINK = re.compile(r'<a class="page-link" href="\/seqcode\/names\?page=\d+">(\d+)<\/a>')
 RE_NAME_HREF = re.compile(r'<a class="card-header-link" href="\/seqcode\/names\/(\d+)">')

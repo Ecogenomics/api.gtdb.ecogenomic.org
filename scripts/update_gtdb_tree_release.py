@@ -16,8 +16,8 @@ from sqlalchemy import insert
 from tqdm import tqdm
 import Levenshtein as lev
 from api.db import GtdbSession, GtdbWebSession, GtdbCommonSession
-from api.db.models import DbGtdbTreeChildren, DbGtdbTree, GtdbCommonSeqCodeHtml, GtdbCommonLpsnHtml
-from api.db.models import MetadataTaxonomy, Genome
+# from api.db.models import DbGtdbTreeChildren, DbGtdbTree, GtdbCommonSeqCodeHtml, GtdbCommonLpsnHtml
+# from api.db.models import MetadataTaxonomy, Genome
 from api.util.collection import iter_batches
 
 ROOT_ID = 0

@@ -13,8 +13,8 @@ from sqlalchemy import insert
 from tqdm import tqdm
 
 from api.db import GtdbCommonSession
-from api.db.models import GtdbCommonLpsnHtml, GtdbCommonLpsnHtmlNotes, GtdbCommonLpsnHtmlChildTaxa, \
-    GtdbCommonLpsnHtmlSynonyms
+# from api.db.models import GtdbCommonLpsnHtml, GtdbCommonLpsnHtmlNotes, GtdbCommonLpsnHtmlChildTaxa, \
+#     GtdbCommonLpsnHtmlSynonyms
 from api.util.collection import iter_batches
 
 RANKS = ('domain', 'phylum', 'class', 'order', 'family', 'genus', 'species')

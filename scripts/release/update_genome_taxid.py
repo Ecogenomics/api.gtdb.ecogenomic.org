@@ -15,7 +15,7 @@ import sqlalchemy as sa
 from tqdm import tqdm
 
 from api.db import GtdbWebSession, GtdbSession, GTDB_DB_URL, GTDB_WEB_DB_URL
-from api.db.models import Genome, MetadataTaxonomy, GtdbWebGenomeTaxId
+# from api.db.models import Genome, MetadataTaxonomy, GtdbWebGenomeTaxId
 from api.util.collection import iter_batches
 
 # Configuration

@@ -3,7 +3,7 @@ from typing import List, Optional, Dict, Any
 
 from pydantic import BaseModel, Field
 
-from api.db.models import MetadataView
+from api.db.gtdb import DbMetadataMtView
 
 
 class AdvancedSearchOption(Enum):
@@ -117,72 +117,72 @@ class AdvancedSearchColumn(Enum):
     Note: Each enum must have a unique ID as this is used to generate 
     the URL. New enums should not re-use old IDs, and IDs should not be changed.
     """
-    ACCESSION = 0, 'Accession', AdvancedDataType.STRING, MetadataView.organism_name, [], 'General'
-    GTDB_TAXONOMY = 1, 'GTDB Taxonomy', AdvancedDataType.STRING, MetadataView.gtdb_taxonomy, [], 'Taxonomic Information'
-    NCBI_TAXONOMY = 2, 'NCBI Taxonomy', AdvancedDataType.STRING, MetadataView.ncbi_taxonomy, [], 'Taxonomic Information'
-    NCBI_STRAIN_ID = 3, 'NCBI Strain Identifiers', AdvancedDataType.STRING, MetadataView.ncbi_strain_identifiers, [], 'Taxonomic Information'
-    GTDB_TYPE_MAT = 4, 'GTDB Type Material', AdvancedDataType.ENUM, MetadataView.gtdb_type_designation_ncbi_taxa, \
+    ACCESSION = 0, 'Accession', AdvancedDataType.STRING, DbMetadataMtView.organism_name, [], 'General'
+    GTDB_TAXONOMY = 1, 'GTDB Taxonomy', AdvancedDataType.STRING, DbMetadataMtView.gtdb_taxonomy, [], 'Taxonomic Information'
+    NCBI_TAXONOMY = 2, 'NCBI Taxonomy', AdvancedDataType.STRING, DbMetadataMtView.ncbi_taxonomy, [], 'Taxonomic Information'
+    NCBI_STRAIN_ID = 3, 'NCBI Strain Identifiers', AdvancedDataType.STRING, DbMetadataMtView.ncbi_strain_identifiers, [], 'Taxonomic Information'
+    GTDB_TYPE_MAT = 4, 'GTDB Type Material', AdvancedDataType.ENUM, DbMetadataMtView.gtdb_type_designation_ncbi_taxa, \
         [AdvancedSearchOption.NOT_TYPE_MAT,
          AdvancedSearchOption.TYPE_STRAIN_OF_SPECIES,
          AdvancedSearchOption.TYPE_STRAIN_OF_SUBSP,
          AdvancedSearchOption.TYPE_STRAIN_OF_HETERO], 'Taxonomic Information'
-    GTDB_REP_OF_SPECIES = 5, 'GTDB Representative of Species', AdvancedDataType.BOOLEAN, MetadataView.gtdb_representative, [], 'Taxonomic Information'
-    CHECKM_COMPLETENESS = 6, 'CheckM Completeness', AdvancedDataType.NUMERIC, MetadataView.checkm_completeness, [], 'Genome Characteristics'
-    CHECKM_CONTAM = 7, 'CheckM Contamination', AdvancedDataType.NUMERIC, MetadataView.checkm_contamination, [], 'Genome Characteristics'
-    CHECKM_STRAIN_HETERO = 8, 'CheckM Strain Heterogeneity', AdvancedDataType.NUMERIC, MetadataView.checkm_strain_heterogeneity, [], 'Genome Characteristics'
-    CNT_5S = 9, '5S Count', AdvancedDataType.NUMERIC, MetadataView.lsu_5s_count, [], 'Genome Characteristics'
-    CNT_16S = 10, '16S Count', AdvancedDataType.NUMERIC, MetadataView.ssu_count, [], 'Genome Characteristics'
-    CNT_23S = 11, '23S Count', AdvancedDataType.NUMERIC, MetadataView.lsu_23s_count, [], 'Genome Characteristics'
-    TRNA_COUNT = 12, 'tRNA Count', AdvancedDataType.NUMERIC, MetadataView.trna_aa_count, [], 'Genome Characteristics'
-    CONTIG_COUNT = 13, 'Contig Count', AdvancedDataType.NUMERIC, MetadataView.contig_count, [], 'Genome Characteristics'
-    N50_CONTIGS = 14, 'N50 Contigs', AdvancedDataType.NUMERIC, MetadataView.n50_contigs, [], 'Genome Characteristics'
-    LONGEST_CONTIG = 15, 'Longest Contig', AdvancedDataType.NUMERIC, MetadataView.longest_contig, [], 'Genome Characteristics'
-    SCAFFOLD_COUNT = 16, 'Scaffold Count', AdvancedDataType.NUMERIC, MetadataView.scaffold_count, [], 'Genome Characteristics'
-    N50_SCAFFOLDS = 17, 'N50 Scaffolds', AdvancedDataType.NUMERIC, MetadataView.n50_scaffolds, [], 'Genome Characteristics'
-    LONGEST_SCAFFOLD = 18, 'Longest Scaffold', AdvancedDataType.NUMERIC, MetadataView.longest_scaffold, [], 'Genome Characteristics'
-    GENOME_SIZE = 19, 'Genome Size', AdvancedDataType.NUMERIC, MetadataView.genome_size, [], 'Genome Characteristics'
-    PROTEIN_COUNT = 20, 'Protein Count', AdvancedDataType.NUMERIC, MetadataView.protein_count, [], 'Genome Characteristics'
-    CODING_DENSITY = 21, 'Coding Density', AdvancedDataType.NUMERIC, MetadataView.coding_density, [], 'Genome Characteristics'
-    GC_PCT = 22, 'GC Percentage', AdvancedDataType.NUMERIC, MetadataView.gc_percentage, [], 'Genome Characteristics'
-    AMBIGUOUS_BASES = 23, 'Ambiguous Bases', AdvancedDataType.NUMERIC, MetadataView.ambiguous_bases, [], 'Genome Characteristics'
-    ASSEMBLY_LEVEL = 24, 'Assembly Level', AdvancedDataType.ENUM, MetadataView.ncbi_assembly_level, \
+    GTDB_REP_OF_SPECIES = 5, 'GTDB Representative of Species', AdvancedDataType.BOOLEAN, DbMetadataMtView.gtdb_representative, [], 'Taxonomic Information'
+    CHECKM_COMPLETENESS = 6, 'CheckM Completeness', AdvancedDataType.NUMERIC, DbMetadataMtView.checkm_completeness, [], 'Genome Characteristics'
+    CHECKM_CONTAM = 7, 'CheckM Contamination', AdvancedDataType.NUMERIC, DbMetadataMtView.checkm_contamination, [], 'Genome Characteristics'
+    CHECKM_STRAIN_HETERO = 8, 'CheckM Strain Heterogeneity', AdvancedDataType.NUMERIC, DbMetadataMtView.checkm_strain_heterogeneity, [], 'Genome Characteristics'
+    CNT_5S = 9, '5S Count', AdvancedDataType.NUMERIC, DbMetadataMtView.lsu_5s_count, [], 'Genome Characteristics'
+    CNT_16S = 10, '16S Count', AdvancedDataType.NUMERIC, DbMetadataMtView.ssu_count, [], 'Genome Characteristics'
+    CNT_23S = 11, '23S Count', AdvancedDataType.NUMERIC, DbMetadataMtView.lsu_23s_count, [], 'Genome Characteristics'
+    TRNA_COUNT = 12, 'tRNA Count', AdvancedDataType.NUMERIC, DbMetadataMtView.trna_aa_count, [], 'Genome Characteristics'
+    CONTIG_COUNT = 13, 'Contig Count', AdvancedDataType.NUMERIC, DbMetadataMtView.contig_count, [], 'Genome Characteristics'
+    N50_CONTIGS = 14, 'N50 Contigs', AdvancedDataType.NUMERIC, DbMetadataMtView.n50_contigs, [], 'Genome Characteristics'
+    LONGEST_CONTIG = 15, 'Longest Contig', AdvancedDataType.NUMERIC, DbMetadataMtView.longest_contig, [], 'Genome Characteristics'
+    SCAFFOLD_COUNT = 16, 'Scaffold Count', AdvancedDataType.NUMERIC, DbMetadataMtView.scaffold_count, [], 'Genome Characteristics'
+    N50_SCAFFOLDS = 17, 'N50 Scaffolds', AdvancedDataType.NUMERIC, DbMetadataMtView.n50_scaffolds, [], 'Genome Characteristics'
+    LONGEST_SCAFFOLD = 18, 'Longest Scaffold', AdvancedDataType.NUMERIC, DbMetadataMtView.longest_scaffold, [], 'Genome Characteristics'
+    GENOME_SIZE = 19, 'Genome Size', AdvancedDataType.NUMERIC, DbMetadataMtView.genome_size, [], 'Genome Characteristics'
+    PROTEIN_COUNT = 20, 'Protein Count', AdvancedDataType.NUMERIC, DbMetadataMtView.protein_count, [], 'Genome Characteristics'
+    CODING_DENSITY = 21, 'Coding Density', AdvancedDataType.NUMERIC, DbMetadataMtView.coding_density, [], 'Genome Characteristics'
+    GC_PCT = 22, 'GC Percentage', AdvancedDataType.NUMERIC, DbMetadataMtView.gc_percentage, [], 'Genome Characteristics'
+    AMBIGUOUS_BASES = 23, 'Ambiguous Bases', AdvancedDataType.NUMERIC, DbMetadataMtView.ambiguous_bases, [], 'Genome Characteristics'
+    ASSEMBLY_LEVEL = 24, 'Assembly Level', AdvancedDataType.ENUM, DbMetadataMtView.ncbi_assembly_level, \
         [AdvancedSearchOption.CONTIG,
          AdvancedSearchOption.SCAFFOLD,
          AdvancedSearchOption.COMPLETE_GENOME,
          AdvancedSearchOption.CHROMOSOME], 'NCBI Metadata'
-    ASSEMBLY_NAME = 25, 'Assembly Name', AdvancedDataType.STRING, MetadataView.ncbi_assembly_name, [], 'NCBI Metadata'
-    ASSEMBLY_TYPE = 26, 'Assembly Type', AdvancedDataType.STRING, MetadataView.ncbi_assembly_type, [], 'NCBI Metadata'
-    BIOPROJECT = 27, 'Bioproject', AdvancedDataType.STRING, MetadataView.ncbi_bioproject, [], 'NCBI Metadata'
-    BIOSAMPLE = 28, 'Biosample', AdvancedDataType.STRING, MetadataView.ncbi_biosample, [], 'NCBI Metadata'
-    COUNTRY = 29, 'Country', AdvancedDataType.STRING, MetadataView.ncbi_country, [], 'NCBI Metadata'
-    DATE = 30, 'Date', AdvancedDataType.DATE, MetadataView.ncbi_date, [], 'NCBI Metadata'
-    GENBANK_ASSEMBLY_ACCESSION = 31, 'Genbank Assembly Accession', AdvancedDataType.STRING, MetadataView.ncbi_genbank_assembly_accession, [], 'NCBI Metadata'
-    GENOME_CATEGORY = 32, 'Genome Category', AdvancedDataType.ENUM, MetadataView.ncbi_genome_category, [
+    ASSEMBLY_NAME = 25, 'Assembly Name', AdvancedDataType.STRING, DbMetadataMtView.ncbi_assembly_name, [], 'NCBI Metadata'
+    ASSEMBLY_TYPE = 26, 'Assembly Type', AdvancedDataType.STRING, DbMetadataMtView.ncbi_assembly_type, [], 'NCBI Metadata'
+    BIOPROJECT = 27, 'Bioproject', AdvancedDataType.STRING, DbMetadataMtView.ncbi_bioproject, [], 'NCBI Metadata'
+    BIOSAMPLE = 28, 'Biosample', AdvancedDataType.STRING, DbMetadataMtView.ncbi_biosample, [], 'NCBI Metadata'
+    COUNTRY = 29, 'Country', AdvancedDataType.STRING, DbMetadataMtView.ncbi_country, [], 'NCBI Metadata'
+    DATE = 30, 'Date', AdvancedDataType.DATE, DbMetadataMtView.ncbi_date, [], 'NCBI Metadata'
+    GENBANK_ASSEMBLY_ACCESSION = 31, 'Genbank Assembly Accession', AdvancedDataType.STRING, DbMetadataMtView.ncbi_genbank_assembly_accession, [], 'NCBI Metadata'
+    GENOME_CATEGORY = 32, 'Genome Category', AdvancedDataType.ENUM, DbMetadataMtView.ncbi_genome_category, [
         AdvancedSearchOption.DERIVED_METAGENOME,
         AdvancedSearchOption.DERIVED_ENV_SAMPLE,
         AdvancedSearchOption.DERIVED_SINGLE_CELL,
         AdvancedSearchOption.NULL], 'NCBI Metadata'
-    GENOME_REPRESENTATION = 33, 'Genome Representation', AdvancedDataType.ENUM, MetadataView.ncbi_genome_representation, \
+    GENOME_REPRESENTATION = 33, 'Genome Representation', AdvancedDataType.ENUM, DbMetadataMtView.ncbi_genome_representation, \
         [AdvancedSearchOption.FULL,
          AdvancedSearchOption.PARTIAL], 'NCBI Metadata'
-    ISOLATE = 34, 'Isolate', AdvancedDataType.STRING, MetadataView.ncbi_isolate, [], 'NCBI Metadata'
-    ISOLATION_SOURCE = 35, 'Isolation Source', AdvancedDataType.STRING, MetadataView.ncbi_isolation_source, [], 'NCBI Metadata'
-    MOLECULE_COUNT = 36, 'Molecule Count', AdvancedDataType.NUMERIC, MetadataView.ncbi_molecule_count, [], 'NCBI Metadata'
-    ORGANISM_NAME = 37, 'Organism Name', AdvancedDataType.STRING, MetadataView.ncbi_organism_name, [], 'NCBI Metadata'
-    CDS_COUNT = 38, 'CDS Count', AdvancedDataType.NUMERIC, MetadataView.ncbi_cds_count, [], 'NCBI Metadata'
-    REFSEQ_CATEGORY = 39, 'Refseq Category', AdvancedDataType.ENUM, MetadataView.ncbi_refseq_category, \
+    ISOLATE = 34, 'Isolate', AdvancedDataType.STRING, DbMetadataMtView.ncbi_isolate, [], 'NCBI Metadata'
+    ISOLATION_SOURCE = 35, 'Isolation Source', AdvancedDataType.STRING, DbMetadataMtView.ncbi_isolation_source, [], 'NCBI Metadata'
+    MOLECULE_COUNT = 36, 'Molecule Count', AdvancedDataType.NUMERIC, DbMetadataMtView.ncbi_molecule_count, [], 'NCBI Metadata'
+    ORGANISM_NAME = 37, 'Organism Name', AdvancedDataType.STRING, DbMetadataMtView.ncbi_organism_name, [], 'NCBI Metadata'
+    CDS_COUNT = 38, 'CDS Count', AdvancedDataType.NUMERIC, DbMetadataMtView.ncbi_cds_count, [], 'NCBI Metadata'
+    REFSEQ_CATEGORY = 39, 'Refseq Category', AdvancedDataType.ENUM, DbMetadataMtView.ncbi_refseq_category, \
         [AdvancedSearchOption.REP_GENOME,
          AdvancedSearchOption.REF_GENOME, AdvancedSearchOption.NA], 'NCBI Metadata'
-    SPANNED_GAPS = 40, 'Spanned Gaps', AdvancedDataType.NUMERIC, MetadataView.ncbi_spanned_gaps, [], 'NCBI Metadata'
-    NCBI_SPECIES_TAXID = 41, 'NCBI Species Taxonomy ID', AdvancedDataType.NUMERIC, MetadataView.ncbi_species_taxid, [], 'NCBI Metadata'
-    SSU_COUNT = 42, 'SSU Count', AdvancedDataType.NUMERIC, MetadataView.ncbi_ssu_count, [], 'NCBI Metadata'
-    SUBMITTER = 43, 'Submitter', AdvancedDataType.STRING, MetadataView.ncbi_submitter, [], 'NCBI Metadata'
-    NCBI_TAXID = 44, 'NCBI Taxonomy ID', AdvancedDataType.NUMERIC, MetadataView.ncbi_taxid, [], 'NCBI Metadata'
-    TOTAL_GAP_LEN = 45, 'Total Gap Length', AdvancedDataType.NUMERIC, MetadataView.ncbi_total_gap_length, [], 'NCBI Metadata'
-    TLN_TABLE = 46, 'Translation Table', AdvancedDataType.NUMERIC, MetadataView.ncbi_translation_table, [], 'NCBI Metadata'
-    TRNA_TOTAL = 47, 'tRNA Count (total)', AdvancedDataType.NUMERIC, MetadataView.ncbi_trna_count, [], 'NCBI Metadata'
+    SPANNED_GAPS = 40, 'Spanned Gaps', AdvancedDataType.NUMERIC, DbMetadataMtView.ncbi_spanned_gaps, [], 'NCBI Metadata'
+    NCBI_SPECIES_TAXID = 41, 'NCBI Species Taxonomy ID', AdvancedDataType.NUMERIC, DbMetadataMtView.ncbi_species_taxid, [], 'NCBI Metadata'
+    SSU_COUNT = 42, 'SSU Count', AdvancedDataType.NUMERIC, DbMetadataMtView.ncbi_ssu_count, [], 'NCBI Metadata'
+    SUBMITTER = 43, 'Submitter', AdvancedDataType.STRING, DbMetadataMtView.ncbi_submitter, [], 'NCBI Metadata'
+    NCBI_TAXID = 44, 'NCBI Taxonomy ID', AdvancedDataType.NUMERIC, DbMetadataMtView.ncbi_taxid, [], 'NCBI Metadata'
+    TOTAL_GAP_LEN = 45, 'Total Gap Length', AdvancedDataType.NUMERIC, DbMetadataMtView.ncbi_total_gap_length, [], 'NCBI Metadata'
+    TLN_TABLE = 46, 'Translation Table', AdvancedDataType.NUMERIC, DbMetadataMtView.ncbi_translation_table, [], 'NCBI Metadata'
+    TRNA_TOTAL = 47, 'tRNA Count (total)', AdvancedDataType.NUMERIC, DbMetadataMtView.ncbi_trna_count, [], 'NCBI Metadata'
 
-    TYPE_MATERIAL = 48, 'Type Material', AdvancedDataType.ENUM, MetadataView.ncbi_type_material_designation, [
+    TYPE_MATERIAL = 48, 'Type Material', AdvancedDataType.ENUM, DbMetadataMtView.ncbi_type_material_designation, [
         AdvancedSearchOption.ASSEMBLY_FROM_TYPE,
         AdvancedSearchOption.ASSEMBLY_FROM_SYNONYM,
         AdvancedSearchOption.ASSEMBLY_FROM_PATHO,
@@ -191,12 +191,12 @@ class AdvancedSearchColumn(Enum):
         AdvancedSearchOption.NA
     ], 'NCBI Metadata'
 
-    UNSPANNED_GAPS = 49, 'Unspanned Gaps', AdvancedDataType.NUMERIC, MetadataView.ncbi_unspanned_gaps, [], 'NCBI Metadata'
-    VERSION_STATUS = 50, 'Version Status', AdvancedDataType.STRING, MetadataView.ncbi_version_status, [], 'NCBI Metadata'
-    WGS_MASTER = 51, 'WGS Master', AdvancedDataType.STRING, MetadataView.ncbi_wgs_master, [], 'NCBI Metadata'
-    CHECKM2_COMPLETE = 52, 'CheckM2 Completeness', AdvancedDataType.NUMERIC, MetadataView.checkm2_completeness, [], 'Genome Characteristics'
-    CHECKM2_CONTAM = 53, 'CheckM2 Contamination', AdvancedDataType.NUMERIC, MetadataView.checkm2_contamination, [], 'Genome Characteristics'
-    CHECKM2_MODEL = 54, 'CheckM2 Model', AdvancedDataType.ENUM, MetadataView.checkm2_model, [
+    UNSPANNED_GAPS = 49, 'Unspanned Gaps', AdvancedDataType.NUMERIC, DbMetadataMtView.ncbi_unspanned_gaps, [], 'NCBI Metadata'
+    VERSION_STATUS = 50, 'Version Status', AdvancedDataType.STRING, DbMetadataMtView.ncbi_version_status, [], 'NCBI Metadata'
+    WGS_MASTER = 51, 'WGS Master', AdvancedDataType.STRING, DbMetadataMtView.ncbi_wgs_master, [], 'NCBI Metadata'
+    CHECKM2_COMPLETE = 52, 'CheckM2 Completeness', AdvancedDataType.NUMERIC, DbMetadataMtView.checkm2_completeness, [], 'Genome Characteristics'
+    CHECKM2_CONTAM = 53, 'CheckM2 Contamination', AdvancedDataType.NUMERIC, DbMetadataMtView.checkm2_contamination, [], 'Genome Characteristics'
+    CHECKM2_MODEL = 54, 'CheckM2 Model', AdvancedDataType.ENUM, DbMetadataMtView.checkm2_model, [
         AdvancedSearchOption.CHECKM2_MODEL_GENERAL,
         AdvancedSearchOption.CHECKM2_MODEL_SPECIFIC,
         AdvancedSearchOption.NULL

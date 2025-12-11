@@ -2,10 +2,10 @@ import re
 import shlex
 from typing import List
 
-import sqlalchemy as sa
-from sqlalchemy.orm import Session
+import sqlmodel as sm
+from sqlmodel import Session
 
-from api.db.models import GtdbSearchMtView
+from api.db.gtdb import DbGtdbSearchMtView
 from api.exceptions import HttpBadRequest
 from api.model.search import SearchGtdbRequest, SearchGtdbResponse, SearchColumnEnum, SearchGtdbRow
 from api.util.accession import canonical_gid
@@ -54,51 +54,53 @@ def search_gtdb(request: SearchGtdbRequest, db: Session) -> SearchGtdbResponse:
         keywords = [x for x in keywrd.split(' ') if len(x) > 0]
 
     if request.searchField is SearchColumnEnum.ALL:
-        list_fields = (GtdbSearchMtView.gtdb_taxonomy,
-                       GtdbSearchMtView.id_at_source,
-                       GtdbSearchMtView.ncbi_organism_name,
-                       GtdbSearchMtView.ncbi_taxonomy,
-                       GtdbSearchMtView.ncbi_genbank_assembly_accession,
-                       GtdbSearchMtView.formatted_source_id)
+        list_fields = (DbGtdbSearchMtView.gtdb_taxonomy,
+                       DbGtdbSearchMtView.id_at_source,
+                       DbGtdbSearchMtView.ncbi_organism_name,
+                       DbGtdbSearchMtView.ncbi_taxonomy,
+                       DbGtdbSearchMtView.ncbi_genbank_assembly_accession,
+                       DbGtdbSearchMtView.formatted_source_id)
     elif request.searchField is SearchColumnEnum.NCBI_GENOME_ID and len(keywrd) > 1:
-        list_fields = (GtdbSearchMtView.id_at_source,
-                       GtdbSearchMtView.ncbi_genbank_assembly_accession,
-                       GtdbSearchMtView.formatted_source_id)
+        list_fields = (DbGtdbSearchMtView.id_at_source,
+                       DbGtdbSearchMtView.ncbi_genbank_assembly_accession,
+                       DbGtdbSearchMtView.formatted_source_id)
     elif request.searchField is SearchColumnEnum.NCBI_ORG_NAME and len(keywrd) > 1:
-        list_fields = [GtdbSearchMtView.ncbi_organism_name]
+        list_fields = [DbGtdbSearchMtView.ncbi_organism_name]
     elif request.searchField is SearchColumnEnum.NCBI_TAX and len(keywrd) > 1:
-        list_fields = [GtdbSearchMtView.ncbi_taxonomy]
+        list_fields = [DbGtdbSearchMtView.ncbi_taxonomy]
     elif request.searchField is SearchColumnEnum.GTDB_TAX and len(keywrd) > 1:
-        list_fields = [GtdbSearchMtView.gtdb_taxonomy]
+        list_fields = [DbGtdbSearchMtView.gtdb_taxonomy]
     else:
         raise HttpBadRequest(f"Method must be one of: {list(SearchColumnEnum)}")
 
     where_clause = generate_search_query_2(list_fields, keywords)
 
     query = (
-        sa.select([GtdbSearchMtView.id_at_source,
-                   GtdbSearchMtView.ncbi_organism_name,
-                   GtdbSearchMtView.ncbi_taxonomy,
-                   GtdbSearchMtView.gtdb_taxonomy,
-                   GtdbSearchMtView.ncbi_genbank_assembly_accession,
-                   GtdbSearchMtView.ncbi_type_material_designation,
-                   GtdbSearchMtView.gtdb_representative]).
-        where(sa.or_(*where_clause))
+        sm.select(
+            DbGtdbSearchMtView.id_at_source,
+            DbGtdbSearchMtView.ncbi_organism_name,
+            DbGtdbSearchMtView.ncbi_taxonomy,
+            DbGtdbSearchMtView.gtdb_taxonomy,
+            DbGtdbSearchMtView.ncbi_genbank_assembly_accession,
+            DbGtdbSearchMtView.ncbi_type_material_designation,
+            DbGtdbSearchMtView.gtdb_representative
+        )
+        .where(sm.or_(*where_clause))
     )
 
     # Filters
     if request.ncbiTypeMaterialOnly:
-        query = query.where(GtdbSearchMtView.ncbi_type_material_designation != None)
+        query = query.where(DbGtdbSearchMtView.ncbi_type_material_designation != None)
     if request.gtdbSpeciesRepOnly:
-        query = query.where(GtdbSearchMtView.gtdb_representative == True)
+        query = query.where(DbGtdbSearchMtView.gtdb_representative == True)
 
     # Text filtering
     if request.filterText:
-        query = query.where(sa.or_(
-            GtdbSearchMtView.id_at_source.ilike(f'%{request.filterText}%'),
-            GtdbSearchMtView.ncbi_organism_name.ilike(f'%{request.filterText}%'),
-            GtdbSearchMtView.ncbi_taxonomy.ilike(f'%{request.filterText}%'),
-            GtdbSearchMtView.gtdb_taxonomy.ilike(f'%{request.filterText}%'),
+        query = query.where(sm.or_(
+            DbGtdbSearchMtView.id_at_source.ilike(f'%{request.filterText}%'),
+            DbGtdbSearchMtView.ncbi_organism_name.ilike(f'%{request.filterText}%'),
+            DbGtdbSearchMtView.ncbi_taxonomy.ilike(f'%{request.filterText}%'),
+            DbGtdbSearchMtView.gtdb_taxonomy.ilike(f'%{request.filterText}%'),
         ))
 
     # Determine the order_by clause
@@ -113,26 +115,29 @@ def search_gtdb(request: SearchGtdbRequest, db: Session) -> SearchGtdbResponse:
 
             # Match the column
             if sort_by == 'accession':
-                order_by.append(GtdbSearchMtView.id_at_source.desc() if sort_desc else GtdbSearchMtView.id_at_source)
+                order_by.append(
+                    DbGtdbSearchMtView.id_at_source.desc() if sort_desc else DbGtdbSearchMtView.id_at_source)
             elif sort_by == 'ncbiOrgName':
                 order_by.append(
-                    GtdbSearchMtView.ncbi_organism_name.desc() if sort_desc else GtdbSearchMtView.ncbi_organism_name)
+                    DbGtdbSearchMtView.ncbi_organism_name.desc() if sort_desc else DbGtdbSearchMtView.ncbi_organism_name)
             elif sort_by == 'ncbiTaxonomy':
-                order_by.append(GtdbSearchMtView.ncbi_taxonomy.desc() if sort_desc else GtdbSearchMtView.ncbi_taxonomy)
+                order_by.append(
+                    DbGtdbSearchMtView.ncbi_taxonomy.desc() if sort_desc else DbGtdbSearchMtView.ncbi_taxonomy)
             elif sort_by == 'gtdbTaxonomy':
-                order_by.append(GtdbSearchMtView.gtdb_taxonomy.desc() if sort_desc else GtdbSearchMtView.gtdb_taxonomy)
+                order_by.append(
+                    DbGtdbSearchMtView.gtdb_taxonomy.desc() if sort_desc else DbGtdbSearchMtView.gtdb_taxonomy)
             elif sort_by == 'isGtdbSpeciesRep':
                 order_by.append(
-                    GtdbSearchMtView.gtdb_representative.desc() if sort_desc else GtdbSearchMtView.gtdb_representative)
+                    DbGtdbSearchMtView.gtdb_representative.desc() if sort_desc else DbGtdbSearchMtView.gtdb_representative)
             elif sort_by == 'isNcbiTypeMaterial':
                 order_by.append(
-                    GtdbSearchMtView.ncbi_type_material_designation.desc() if sort_desc else GtdbSearchMtView.ncbi_type_material_designation)
+                    DbGtdbSearchMtView.ncbi_type_material_designation.desc() if sort_desc else DbGtdbSearchMtView.ncbi_type_material_designation)
             else:
                 raise HttpBadRequest(f'Unknown sortBy: {sort_by}')
         query = query.order_by(*order_by)
 
     # Get the total number of rows in the table before pagination
-    total_rows = db.execute(sa.select(sa.func.count()).select_from(query)).scalar()
+    total_rows = db.exec(sm.select(sm.func.count()).select_from(query)).first()
 
     # Add pagination
     if request.itemsPerPage and request.page:
@@ -140,7 +145,7 @@ def search_gtdb(request: SearchGtdbRequest, db: Session) -> SearchGtdbResponse:
         query = query.offset(request.itemsPerPage * (request.page - 1))
 
     # Execute the query
-    search_results = db.execute(query)
+    search_results = db.exec(query)
     all_rows = list()
     all_rows.extend(list(search_results))
 

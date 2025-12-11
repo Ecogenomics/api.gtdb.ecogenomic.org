@@ -7,7 +7,7 @@ from collections import defaultdict
 import sqlalchemy as sa
 
 from api.db import GtdbWebSession
-from api.db.models import DbGtdbTreeChildren, DbGtdbTree
+# from api.db.models import DbGtdbTreeChildren, DbGtdbTree
 
 
 def read_tree_rows():

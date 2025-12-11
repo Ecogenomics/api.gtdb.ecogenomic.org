@@ -16,8 +16,8 @@ import sqlalchemy as sa
 from tqdm import tqdm
 
 from api.db import GtdbWebSession, GtdbCommonSession
-from api.db.models import DbGtdbTree, GtdbCommonNcbiCitation, GtdbCommonNcbiName, GtdbCommonNcbiMergedNode, \
-    GtdbCommonNcbiNode, GtdbCommonNcbiNodeCitation, GtdbCommonNcbiGencode, GtdbCommonNcbiDivision
+# from api.db.models import DbGtdbTree, GtdbCommonNcbiCitation, GtdbCommonNcbiName, GtdbCommonNcbiMergedNode, \
+#     GtdbCommonNcbiNode, GtdbCommonNcbiNodeCitation, GtdbCommonNcbiGencode, GtdbCommonNcbiDivision
 
 PATH_TMP = '/tmp/taxdump'
 

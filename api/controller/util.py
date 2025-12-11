@@ -5,12 +5,13 @@ from typing import Optional
 
 import dendropy
 import requests
-import sqlalchemy as sa
+import sqlmodel as sm
 from fastapi import UploadFile
-from sqlalchemy.orm import Session
+from sqlmodel import Session
 
 from api.config import GTDB_CAPTCHA_SECRET_KEY, Env, ENV_NAME, SMTP_DOMAIN_BLACKLIST
-from api.db.models import GtdbWebUbaAlias, Genome
+from api.db.gtdb import DbGenomes
+from api.db.gtdb_web import DbUbaAlias
 from api.exceptions import HttpBadRequest
 from api.model.util import UtilContactEmailRequest, NoUserAccEnum, PrevUserEnum, UserOnlyEnum
 from api.util.accession import canonical_gid
@@ -78,8 +79,8 @@ def convert_accession_get_accessions(db):
     out_u = dict()
     out_uba = dict()
     out_ncbi = dict()
-    query = sa.select([GtdbWebUbaAlias.u_accession, GtdbWebUbaAlias.uba_accession, GtdbWebUbaAlias.ncbi_accession])
-    for idx, row in enumerate(db.execute(query)):
+    query = sm.select(DbUbaAlias.u_accession, DbUbaAlias.uba_accession, DbUbaAlias.ncbi_accession)
+    for idx, row in enumerate(db.exec(query).all()):
         u_acc, uba_acc, ncbi_acc = row.u_accession, row.uba_accession, row.ncbi_accession
         out_idx.append((u_acc, uba_acc, ncbi_acc))
         out_u[u_acc] = idx
@@ -92,8 +93,8 @@ def convert_accession_get_accessions(db):
 
 def canonical_to_short_ncbi(db: Session):
     out = dict()
-    query = sa.select([Genome.name])
-    for row in db.execute(query):
+    query = sm.select(DbGenomes.name)
+    for row in db.exec(query).all():
         # Take the most recent version
         canonical = canonical_gid(row.name)
         if canonical in out:
@@ -109,9 +110,15 @@ def canonical_to_short_ncbi(db: Session):
     return out
 
 
-def convert_tree_accessions(db_web: Session, db_gtdb: Session, noUserAcc: NoUserAccEnum, prevUser: PrevUserEnum,
-                            userOnly: UserOnlyEnum, newickFile: Optional[UploadFile] = None,
-                            newickString: Optional[str] = None) -> BytesIO:
+def convert_tree_accessions(
+        db_web: Session,
+        db_gtdb: Session,
+        noUserAcc: NoUserAccEnum,
+        prevUser: PrevUserEnum,
+        userOnly: UserOnlyEnum,
+        newickFile: Optional[UploadFile] = None,
+        newickString: Optional[str] = None
+) -> BytesIO:
     MSG_USR_IGNORE = 'Used requested "Do not change"'
     MSG_USR_SAME = 'Accession is already in the desired format'
     MSG_UNKNOWN_OPT = 'Selected option is unknown'

@@ -14,15 +14,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
 
 from api import __version__
-from api.config import Env, ENV_NAME
-from api.view import fastani, taxonomy, species, taxon, sankey, search, genome, advanced, util, genomes, status, meta, \
-    sitemap, taxa
+from api.config import ENV_NAME, Env
+from api.view import (
+    advanced, genome, genomes, meta, sankey, search, sitemap, skani, species, status, taxa, taxon, taxonomy, util
+)
 
 # Documentation
 tags_metadata = [
     {
-        "name": "fastani",
-        "description": "Perform ANI comparisons on RefSeq and GenBank genomes using [FastANI](https://github.com/ParBLiSS/FastANI).",
+        "name": "skani",
+        "description": "Perform ANI comparisons on RefSeq and GenBank genomes using skani.",
     },
     {
         "name": "taxonomy",
@@ -77,23 +78,25 @@ tags_metadata = [
         "description": "Returns information about the state of the web services."
     }
 ]
+tags_metadata = sorted(tags_metadata, key=lambda x: x['name'])
 
 # Initialise the app
-app = FastAPI(title='GTDB API',
-              version=__version__,
-              docs_url='/',
-              description=f'<p>Although this API was initially created for use exclusively by the GTDB website, we welcome '
-                          f'and encourage you to utilize it for your own purposes.</p>'
-                          f'<p>We plan to expand our documentation in the near future to provide you with even more helpful information.</p>'
-                          f'<p>It is important to note that a significant portion of the available data can be downloaded as a flat file from our downloads page, so we kindly ask that you consider this before resorting to scraping.</p>'
-                          f'<ul>'
-                          f'<li><a href="https://github.com/Ecogenomics/api.gtdb.ecogenomic.org" target="_blank">GitHub repository</a><br></li>'
-                          f'<li><a href="https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/blob/main/CHANGELOG.md" target="_blank">CHANGELOG</a></li>'
-                          f'</ul>',
-              openapi_tags=tags_metadata)
+app = FastAPI(
+    title='GTDB API',
+    version=__version__,
+    docs_url='/',
+    description=f'<p>Although this API was initially created for use exclusively by the GTDB website, we welcome '
+                f'and encourage you to utilize it for your own purposes.</p>'
+                f'<p>We plan to expand our documentation in the near future to provide you with even more helpful information.</p>'
+                f'<p>It is important to note that a significant portion of the available data can be downloaded as a flat file from our downloads page, so we kindly ask that you consider this before resorting to scraping.</p>'
+                f'<ul>'
+                f'<li><a href="https://github.com/Ecogenomics/api.gtdb.ecogenomic.org" target="_blank">GitHub repository</a><br></li>'
+                f'<li><a href="https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/blob/main/CHANGELOG.md" target="_blank">CHANGELOG</a></li>'
+                f'</ul>',
+    openapi_tags=tags_metadata
+)
 
 # Add routes
-app.include_router(fastani.router)
 app.include_router(species.router)
 app.include_router(taxon.router)
 app.include_router(taxonomy.router)
@@ -107,6 +110,7 @@ app.include_router(status.router)
 app.include_router(meta.router)
 app.include_router(sitemap.router)
 app.include_router(taxa.router)
+app.include_router(skani.router)
 
 # Add CORS
 if ENV_NAME is Env.LOCAL:
@@ -120,6 +124,7 @@ if ENV_NAME is Env.LOCAL:
     port = 9000
 elif ENV_NAME is Env.PROD:
     port = 9000
+
 elif ENV_NAME is Env.DEV:
     port = 9001
 else:
@@ -197,4 +202,4 @@ async def v_favicon():
 
 # If running locally
 if __name__ == "__main__":
-    uvicorn.run('main:app', host="0.0.0.0", port=port, reload=True)
+    uvicorn.run('main:app', host="127.0.0.1", port=port, reload=True)

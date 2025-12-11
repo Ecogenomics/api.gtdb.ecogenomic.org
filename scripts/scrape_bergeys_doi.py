@@ -5,7 +5,7 @@ if __name__ == '__main__':
 
 
 from api.db import GtdbWebSession, GtdbCommonSession
-from api.db.models import DbGtdbTree, GtdbCommonBergeysHtml
+# from api.db.models import DbGtdbTree, GtdbCommonBergeysHtml
 
 import os
 import re
