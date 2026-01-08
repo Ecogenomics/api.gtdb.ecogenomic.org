@@ -1,3 +1,10 @@
+## [2.25.1](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.25.0...v2.25.1) (2026-01-08)
+
+
+### Bug Fixes
+
+* **genome:** Correct query execution for genome retrieval ([8741285](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/87412857d40a2574c9165e8c48ba366472424180))
+
 # [2.25.0](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.24.1...v2.25.0) (2025-12-11)
 
 
