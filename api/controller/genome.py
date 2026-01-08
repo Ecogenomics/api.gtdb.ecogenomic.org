@@ -132,7 +132,7 @@ def genome_card(accession: str, db_gtdb: Session, db_web: Session) -> GenomeCard
         metadata_ncbi_gca = db_gtdb.exec(
             sm.select(DbMetadataNcbi).where(DbMetadataNcbi.ncbi_genbank_assembly_accession == accession)).first()
         if metadata_ncbi_gca is not None:
-            genome = db_gtdb.exec(sm.select(DbGenomes).where(DbGenomes.id == metadata_ncbi_gca.id).first())
+            genome = db_gtdb.exec(sm.select(DbGenomes).where(DbGenomes.id == metadata_ncbi_gca.id)).first()
             genome = db_gtdb.exec(sm.select(DbGenomes).where(DbGenomes.id_at_source == genome.id_at_source)).first()
     if genome is None:
         genome = db_gtdb.exec(sm.select(DbGenomes).where(DbGenomes.name.ilike(f'%({accession})%'))).first()
