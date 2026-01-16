@@ -1,3 +1,10 @@
+## [2.25.2](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.25.1...v2.25.2) (2026-01-16)
+
+
+### Bug Fixes
+
+* **skani:** Fix enum serialization using value instead of name & abort on table / heatmap errors. ([4ac09c2](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/4ac09c2a9b9c7f3e423615e49e3b5c59ad759a79))
+
 ## [2.25.1](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.25.0...v2.25.1) (2026-01-08)
 
 
