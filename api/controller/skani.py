@@ -340,7 +340,7 @@ def get_or_set_db_param_id(db: Session, version: SkaniVersion, params: SkaniPara
             'version': version.name,
             'min_af': params.minAf,
             'both_min_af': params.bothMinAf,
-            'preset': params.skaniPreset,
+            'preset': params.skaniPreset.name if params.skaniPreset else None,
             'c': params.cFactor,
             'faster_small': params.fasterSmall or False,
             'm': params.mFactor,
@@ -546,11 +546,18 @@ def get_job_data_table_page(
     if result is None:
         raise HttpNotFound(f'No job with this ID exists.')
 
-    # If the job is not complete, do not return any results
+    # If the job is not complete or in an error state, do not return any results
     if result.completed is None:
         return SkaniJobDataTableResponse(
             jobId=job_id_str,
             completed=False,
+            error=result.error,
+            rows=list()
+        )
+    if result.error is True:
+        return SkaniJobDataTableResponse(
+            jobId=job_id_str,
+            completed=True,
             error=result.error,
             rows=list()
         )
@@ -911,7 +918,31 @@ def skani_get_heatmap(
     if job.completed is None:
         return SkaniJobDataHeatmapResponse(
             jobId=job_name,
-            completed=False
+            completed=False,
+            error=False,
+            ani=list(),
+            af=list(),
+            xLabels=list(),
+            yLabels=list(),
+            xSpecies=list(),
+            ySpecies=list(),
+            method='ani',
+            spReps=list()
+        )
+
+    if job.error is True:
+        return SkaniJobDataHeatmapResponse(
+            jobId=job_name,
+            completed=False,
+            error=True,
+            ani=list(),
+            af=list(),
+            xLabels=list(),
+            yLabels=list(),
+            xSpecies=list(),
+            ySpecies=list(),
+            method='ani',
+            spReps=list()
         )
 
     # Get the genomes for this job

@@ -293,7 +293,7 @@ class SkaniJobHeatmapData(BaseModel):
 class SkaniJobDataHeatmapResponse(BaseModel):
     jobId: str = Field(...)
     completed: bool = Field(...)
-
+    error: bool = Field(False)
     ani: list[list[float]] = Field(..., )
     af: list[list[float]] = Field(..., )
     xLabels: list[str] = Field(..., )
