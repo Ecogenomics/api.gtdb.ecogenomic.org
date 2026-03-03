@@ -1,3 +1,10 @@
+# [2.26.0](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.25.2...v2.26.0) (2026-03-03)
+
+
+### Features
+
+* **genome:** Add ar53/bac120 marker count to Genome Card and add new endpoint. ([5b020ca](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/5b020ca988b28f50d88933be8076af123d0e0950))
+
 ## [2.25.2](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.25.1...v2.25.2) (2026-01-16)
 
 
