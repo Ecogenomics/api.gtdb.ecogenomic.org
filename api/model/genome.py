@@ -113,6 +113,18 @@ class GenomeMetadataTypeMaterial(BaseModel):
     gtdbTypeSpeciesOfGenus: Optional[bool] = Field(None)
 
 
+
+class GenomeMarkersSummary(BaseModel):
+    bac_n_unique: int = Field(...)
+    bac_n_multi_unique: int = Field(...)
+    bac_n_multi_non_unique: int = Field(...)
+    bac_n_missing: int = Field(...)
+    arc_n_unique: int = Field(...)
+    arc_n_multi_unique: int = Field(...)
+    arc_n_multi_non_unique: int = Field(...)
+    arc_n_missing: int = Field(...)
+
+
 class GenomeCard(BaseModel):
     genome: Optional[GenomeBase] = Field(None)
     metadata_nucleotide: Optional[GenomeMetadataNucleotide] = Field(None)
@@ -129,5 +141,5 @@ class GenomeCard(BaseModel):
     link_ncbi_taxonomy_unfiltered: Optional[str] = Field(None)
     ncbiTaxonomyFiltered: Optional[List[GenomeNcbiTaxon]] = Field(None)
     ncbiTaxonomyUnfiltered: Optional[List[GenomeNcbiTaxon]] = Field(None)
-
+    markerSummary: GenomeMarkersSummary | None = Field(None)
 

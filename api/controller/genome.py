@@ -6,16 +6,69 @@ from sqlalchemy import func
 from sqlmodel import Session
 
 from api.config import GTDB_RELEASES
-from api.db.gtdb import DbSurveyGenomes, DbGenomes, DbMetadataNcbi, DbMetadataGenes, DbMetadataNucleotide, \
+from api.db.gtdb import (
+    DbMvGenomeCanonicalMarkers, DbSurveyGenomes, DbGenomes, DbMetadataNcbi, DbMetadataGenes,
+    DbMetadataNucleotide,
     DbMetadataTaxonomy, DbMetadataTypeMaterial, DbGtdbTypeView
+)
 from api.db.gtdb_web import DbTaxonHist, DbLpsnUrl, DbGenomeTaxId
 from api.exceptions import HttpNotFound, HttpBadRequest
-from api.model.genome import GenomeMetadata, GenomeTaxonHistory, GenomeCard, GenomeBase, GenomeMetadataNucleotide, \
+from api.model.genome import (
+    GenomeMarkersSummary, GenomeMetadata, GenomeTaxonHistory, GenomeCard, GenomeBase,
+    GenomeMetadataNucleotide,
     GenomeMetadataGene, GenomeMetadataNcbi, GenomeMetadataTaxonomy, GenomeNcbiTaxon, GenomeMetadataTypeMaterial
+)
 from api.util.accession import canonical_gid
 
 RE_SURVEY = re.compile(r'((?:GC[FA]_)?\d{9}(?:\.\d)?)')
 
+
+def get_canonical_markers(gid: str, db: Session) -> GenomeMarkersSummary:
+
+    # Get the genome id from the canonical version of the genome id
+    gid_canonical = canonical_gid(gid)
+
+    query = (
+        sm.select(DbMvGenomeCanonicalMarkers)
+        .join(DbGenomes, DbGenomes.id == DbMvGenomeCanonicalMarkers.genome_id)
+        .where(DbGenomes.formatted_source_id == gid_canonical)
+    )
+
+    results = db.exec(query).first()
+    if results is None:
+        raise HttpNotFound('Genome not found')
+
+    out = GenomeMarkersSummary(
+        bac_n_unique=results.bac_n_unq,
+        bac_n_multi_unique=results.bac_n_muq,
+        bac_n_multi_non_unique=results.bac_n_mul,
+        bac_n_missing=results.bac_n_mis,
+        arc_n_unique=results.arc_n_unq,
+        arc_n_multi_unique=results.arc_n_muq,
+        arc_n_multi_non_unique=results.arc_n_mul,
+        arc_n_missing=results.arc_n_mis
+    )
+    return out
+
+def maybe_get_canonical_markers_by_id(gid: int, db: Session) -> GenomeMarkersSummary | None:
+    query = (
+        sm.select(DbMvGenomeCanonicalMarkers)
+        .where(DbMvGenomeCanonicalMarkers.genome_id == gid)
+    )
+    results = db.exec(query).first()
+    if results is None:
+        return None
+    out = GenomeMarkersSummary(
+        bac_n_unique=results.bac_n_unq,
+        bac_n_multi_unique=results.bac_n_muq,
+        bac_n_multi_non_unique=results.bac_n_mul,
+        bac_n_missing=results.bac_n_mis,
+        arc_n_unique=results.arc_n_unq,
+        arc_n_multi_unique=results.arc_n_muq,
+        arc_n_multi_non_unique=results.arc_n_mul,
+        arc_n_missing=results.arc_n_mis
+    )
+    return out
 
 def is_surveillance_genome(gid: str, db: Session) -> Optional[str]:
     # Check if this is a surveillance genome
@@ -228,17 +281,22 @@ def genome_card(accession: str, db_gtdb: Session, db_web: Session) -> GenomeCard
     else:
         out_accession = genome.id_at_source
 
-    out_metadata_gene = GenomeMetadataGene(checkm_completeness=metadata_gene.checkm_completeness,
-                                           checkm_contamination=metadata_gene.checkm_contamination,
-                                           checkm_strain_heterogeneity=metadata_gene.checkm_strain_heterogeneity,
-                                           checkm2_completeness=metadata_gene.checkm2_completeness,
-                                           checkm2_contamination=metadata_gene.checkm2_contamination,
-                                           checkm2_model=metadata_gene.checkm2_model,
-                                           lsu_5s_count=metadata_gene.lsu_5s_count,
-                                           ssu_count=metadata_gene.ssu_count,
-                                           lsu_23s_count=metadata_gene.lsu_23s_count,
-                                           protein_count=metadata_gene.protein_count,
-                                           coding_density=metadata_gene.coding_density)
+    # Load marker summary
+    marker_summary = maybe_get_canonical_markers_by_id(genome.id, db_gtdb)
+
+    out_metadata_gene = GenomeMetadataGene(
+        checkm_completeness=metadata_gene.checkm_completeness,
+        checkm_contamination=metadata_gene.checkm_contamination,
+        checkm_strain_heterogeneity=metadata_gene.checkm_strain_heterogeneity,
+        checkm2_completeness=metadata_gene.checkm2_completeness,
+        checkm2_contamination=metadata_gene.checkm2_contamination,
+        checkm2_model=metadata_gene.checkm2_model,
+        lsu_5s_count=metadata_gene.lsu_5s_count,
+        ssu_count=metadata_gene.ssu_count,
+        lsu_23s_count=metadata_gene.lsu_23s_count,
+        protein_count=metadata_gene.protein_count,
+        coding_density=metadata_gene.coding_density
+        )
 
     out_metadata_type_material = GenomeMetadataTypeMaterial(
         gtdbTypeDesignation=metadata_type_material.gtdb_type_designation_ncbi_taxa,
@@ -246,7 +304,8 @@ def genome_card(accession: str, db_gtdb: Session, db_web: Session) -> GenomeCard
         lpsnTypeDesignation=metadata_type_material.lpsn_type_designation,
         dsmzTypeDesignation=metadata_type_material.dsmz_type_designation,
         lpsnPriorityYear=metadata_type_material.lpsn_priority_year,
-        gtdbTypeSpeciesOfGenus=gtdb_type_view.gtdb_genus_type_species)
+        gtdbTypeSpeciesOfGenus=gtdb_type_view.gtdb_genus_type_species
+    )
 
     out_metadata_ncbi = GenomeMetadataNcbi(
         ncbi_genbank_assembly_accession=metadata_ncbi.ncbi_genbank_assembly_accession,
@@ -277,43 +336,50 @@ def genome_card(accession: str, db_gtdb: Session, db_web: Session) -> GenomeCard
         ncbi_trna_count=metadata_ncbi.ncbi_trna_count,
         ncbi_unspanned_gaps=metadata_ncbi.ncbi_unspanned_gaps,
         ncbi_version_status=metadata_ncbi.ncbi_version_status,
-        ncbi_wgs_master=metadata_ncbi.ncbi_wgs_master)
+        ncbi_wgs_master=metadata_ncbi.ncbi_wgs_master
+    )
 
-    out_metadata_taxonomy = GenomeMetadataTaxonomy(ncbi_taxonomy=metadata_taxonomy.ncbi_taxonomy,
-                                                   ncbi_taxonomy_unfiltered=metadata_taxonomy.ncbi_taxonomy_unfiltered,
-                                                   gtdb_representative=metadata_taxonomy.gtdb_representative,
-                                                   gtdb_genome_representative=metadata_taxonomy.gtdb_genome_representative,
-                                                   ncbi_type_material_designation=metadata_taxonomy.ncbi_type_material_designation,
-                                                   gtdbDomain=metadata_taxonomy.gtdb_domain,
-                                                   gtdbPhylum=metadata_taxonomy.gtdb_phylum,
-                                                   gtdbClass=metadata_taxonomy.gtdb_class,
-                                                   gtdbOrder=metadata_taxonomy.gtdb_order,
-                                                   gtdbFamily=metadata_taxonomy.gtdb_family,
-                                                   gtdbGenus=metadata_taxonomy.gtdb_genus,
-                                                   gtdbSpecies=metadata_taxonomy.gtdb_species)
+    out_metadata_taxonomy = GenomeMetadataTaxonomy(
+        ncbi_taxonomy=metadata_taxonomy.ncbi_taxonomy,
+        ncbi_taxonomy_unfiltered=metadata_taxonomy.ncbi_taxonomy_unfiltered,
+        gtdb_representative=metadata_taxonomy.gtdb_representative,
+        gtdb_genome_representative=metadata_taxonomy.gtdb_genome_representative,
+        ncbi_type_material_designation=metadata_taxonomy.ncbi_type_material_designation,
+        gtdbDomain=metadata_taxonomy.gtdb_domain,
+        gtdbPhylum=metadata_taxonomy.gtdb_phylum,
+        gtdbClass=metadata_taxonomy.gtdb_class,
+        gtdbOrder=metadata_taxonomy.gtdb_order,
+        gtdbFamily=metadata_taxonomy.gtdb_family,
+        gtdbGenus=metadata_taxonomy.gtdb_genus,
+        gtdbSpecies=metadata_taxonomy.gtdb_species
+    )
 
-    return GenomeCard(genome=GenomeBase(accession=out_accession,
-                                        name=genome.name),
-                      metadata_nucleotide=GenomeMetadataNucleotide(trna_aa_count=metadata_nucleotide.trna_aa_count,
-                                                                   contig_count=metadata_nucleotide.contig_count,
-                                                                   n50_contigs=metadata_nucleotide.n50_contigs,
-                                                                   longest_contig=metadata_nucleotide.longest_contig,
-                                                                   scaffold_count=metadata_nucleotide.scaffold_count,
-                                                                   n50_scaffolds=metadata_nucleotide.n50_scaffolds,
-                                                                   longest_scaffold=metadata_nucleotide.longest_scaffold,
-                                                                   genome_size=metadata_nucleotide.genome_size,
-                                                                   gc_percentage=metadata_nucleotide.gc_percentage,
-                                                                   ambiguous_bases=metadata_nucleotide.ambiguous_bases),
-                      metadata_gene=out_metadata_gene,
-                      metadata_ncbi=out_metadata_ncbi,
-                      metadataTaxonomy=out_metadata_taxonomy,
-                      gtdbTypeDesignation=metadata_type_material.gtdb_type_designation_ncbi_taxa,
-                      subunit_summary=subunit_summary,
-                      speciesClusterCount=species_cluster_count,
-                      metadata_type_material=out_metadata_type_material,
-                      link_ncbi_taxonomy=link_ncbi_taxonomy,
-                      link_ncbi_taxonomy_unfiltered=link_ncbi_taxonomy_unfiltered,
-                      speciesRepName=species_rep,
-                      lpsnUrl=lpsn_url,
-                      ncbiTaxonomyFiltered=ncbi_taxonomy_filtered,
-                      ncbiTaxonomyUnfiltered=ncbi_taxonomy_unfiltered)
+    return GenomeCard(
+        genome=GenomeBase(accession=out_accession, name=genome.name),
+        metadata_nucleotide=GenomeMetadataNucleotide(
+            trna_aa_count=metadata_nucleotide.trna_aa_count,
+            contig_count=metadata_nucleotide.contig_count,
+            n50_contigs=metadata_nucleotide.n50_contigs,
+            longest_contig=metadata_nucleotide.longest_contig,
+            scaffold_count=metadata_nucleotide.scaffold_count,
+            n50_scaffolds=metadata_nucleotide.n50_scaffolds,
+            longest_scaffold=metadata_nucleotide.longest_scaffold,
+            genome_size=metadata_nucleotide.genome_size,
+            gc_percentage=metadata_nucleotide.gc_percentage,
+            ambiguous_bases=metadata_nucleotide.ambiguous_bases
+        ),
+        metadata_gene=out_metadata_gene,
+        metadata_ncbi=out_metadata_ncbi,
+        metadataTaxonomy=out_metadata_taxonomy,
+        gtdbTypeDesignation=metadata_type_material.gtdb_type_designation_ncbi_taxa,
+        subunit_summary=subunit_summary,
+        speciesClusterCount=species_cluster_count,
+        metadata_type_material=out_metadata_type_material,
+        link_ncbi_taxonomy=link_ncbi_taxonomy,
+        link_ncbi_taxonomy_unfiltered=link_ncbi_taxonomy_unfiltered,
+        speciesRepName=species_rep,
+        lpsnUrl=lpsn_url,
+        ncbiTaxonomyFiltered=ncbi_taxonomy_filtered,
+        ncbiTaxonomyUnfiltered=ncbi_taxonomy_unfiltered,
+        markerSummary=marker_summary
+    )

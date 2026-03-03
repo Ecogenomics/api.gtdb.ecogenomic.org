@@ -2,9 +2,9 @@ from typing import List, Annotated
 
 from fastapi import APIRouter, Path
 
-from api.controller.genome import genome_metadata, genome_taxon_history, genome_card
+from api.controller.genome import genome_metadata, genome_taxon_history, genome_card, get_canonical_markers
 from api.db import GtdbDbDep, GtdbWebDbDep
-from api.model.genome import GenomeMetadata, GenomeTaxonHistory, GenomeCard
+from api.model.genome import GenomeMarkersSummary, GenomeMetadata, GenomeTaxonHistory, GenomeCard
 
 router = APIRouter(prefix='/genome', tags=['genome'])
 
@@ -69,3 +69,17 @@ def v_genome_card(
         db_gtdb: GtdbDbDep,
         db_web: GtdbWebDbDep):
     return genome_card(accession, db_gtdb, db_web)
+
+@router.get(
+    '/{accession}/marker-summary',
+    response_model=GenomeMarkersSummary,
+    summary='Return information about the canonical marker genes used for phylogenetic inference.'
+)
+def v_genome_markers(
+        accession: Annotated[str, Path(
+            ...,
+            description='The NCBI accession to search.',
+            example='GCA_123456789.1',
+        )],
+        db_gtdb: GtdbDbDep):
+    return get_canonical_markers(accession, db_gtdb)

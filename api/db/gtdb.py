@@ -694,3 +694,17 @@ class DbWebGtdbStats(SQLModel, table=True):
     qc_passed: int | None = Field()
     qc_failed: int | None = Field()
     representatives: int | None = Field()
+
+
+class DbMvGenomeCanonicalMarkers(SQLModel, table=True):
+    __tablename__ = 'mv_genome_canonical_markers'
+
+    genome_id: int = Field(primary_key=True)
+    bac_n_unq: int = Field()
+    bac_n_muq: int = Field()
+    bac_n_mul: int = Field()
+    bac_n_mis: int = Field()
+    arc_n_unq: int = Field()
+    arc_n_muq: int = Field()
+    arc_n_mul: int = Field()
+    arc_n_mis: int = Field()
