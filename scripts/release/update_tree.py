@@ -8,18 +8,24 @@ if __name__ == '__main__':
 import json
 from collections import defaultdict
 from collections import deque
-
+from sqlmodel import Session
 import sqlalchemy as sa
 from tqdm import tqdm
 
-from api.db import GtdbSession, GtdbWebSession
+from api.db import gtdb_web_engine, gtdb_engine
+from api.db.gtdb_web import (
+    DbGtdbTree, DbGtdbTreeUrlBergeys, DbGtdbTreeUrlSeqCode, DbGtdbTreeUrlLpsn,
+    DbGtdbTreeUrlNcbi, DbGtdbTreeUrlSandpiper
+)
+from api.db.gtdb import DbGenomes, DbMetadataTaxonomy
+
 # from api.db.models import DbGtdbTree, GtdbWebUrlBergeys, GtdbWebUrlSeqcode, GtdbWebUrlLpsn, GtdbWebUrlNcbi, \
 #     GtdbWebUrlSandPiper
 # from api.db.models import MetadataTaxonomy, Genome
 
 # Configuration
-JSON_PATH = '/private/tmp/release226/genome_taxonomy_r226_count.json'
-OUT_DIR = '/tmp/release226_tree'
+JSON_PATH = '/Users/aaron/tmp/r232/genome_taxonomy_r232_count.json'
+OUT_DIR = '/tmp/release232_tree'
 
 # Globals
 EXPECTED = {'name', 'type', 'children', 'countgen'}
@@ -78,11 +84,13 @@ def parse_json_file():
         d_id_to_name[cur_id] = cur_name
 
         # Create the child row mapping
-        rows_children.append(dict(
-            parent_id=parent_id,
-            child_id=cur_id,
-            order_id=order_id
-        ))
+        rows_children.append(
+            dict(
+                parent_id=parent_id,
+                child_id=cur_id,
+                order_id=order_id
+            )
+        )
 
         # Calculate the number of descendant children (ranks above genus _A are poly)
         if node['type'] in {'genome', 's'}:
@@ -100,40 +108,46 @@ def parse_json_file():
             n_desc_children = len(all_names)
 
         # Create the parent row
-        rows_parent.append(dict(
-            id=cur_id,
-            taxon=cur_name,
-            total=cur_total,
-            type=node['type'],
-            is_rep=node.get('rep') if node['type'] == 'genome' else None,
-            type_material=node.get('type_material'),
-            n_desc_children=n_desc_children,
-        ))
+        rows_parent.append(
+            dict(
+                id=cur_id,
+                taxon=cur_name,
+                total=cur_total,
+                type=node['type'],
+                is_rep=node.get('rep') if node['type'] == 'genome' else None,
+                type_material=node.get('type_material'),
+                n_desc_children=n_desc_children,
+            )
+        )
 
         # Enqueue the children
         for i, child in enumerate(node.get('children', list())):
             queue.append((cur_id, child, i))
 
-    rows_parent.append(dict(
-        id=0,
-        taxon='root',
-        total=0,
-        type='root',
-        is_rep=None,
-        type_material=None,
-        n_desc_children=None
-    ))
+    rows_parent.append(
+        dict(
+            id=0,
+            taxon='root',
+            total=0,
+            type='root',
+            is_rep=None,
+            type_material=None,
+            n_desc_children=None
+        )
+    )
 
     return rows_parent, rows_children, d_extra_genomes
 
 
 def get_genome_ids_that_exist_in_db():
     # Find those that already exist in the tree
-    db = GtdbWebSession()
-    query = sa.select([
-        DbGtdbTree.taxon,
-    ]).where(DbGtdbTree.type == 'genome')
-    results = db.execute(query).fetchall()
+    with Session(gtdb_web_engine) as db:
+        query = sa.select(
+            [
+                DbGtdbTree.taxon,
+            ]
+        ).where(DbGtdbTree.type == 'genome')
+        results = db.execute(query).fetchall()
 
     if len(results) == 0:
         raise ValueError('???')
@@ -146,10 +160,12 @@ def convert_rows_children_to_dict(rows_children):
     # Group the rows
     out_tmp = defaultdict(list)
     for row in rows_children:
-        out_tmp[row['parent_id']].append(dict(
-            child_id=row['child_id'],
-            order_id=row['order_id']
-        ))
+        out_tmp[row['parent_id']].append(
+            dict(
+                child_id=row['child_id'],
+                order_id=row['order_id']
+            )
+        )
 
     # Sort them and drop the order_id value
     out = dict()
@@ -173,14 +189,17 @@ def convert_rows_parent_to_dict(rows_parent):
 
 
 def get_genome_species():
-    db_gtdb = GtdbSession()
-
-    # Get all species that do not belong to those that exist in the tree
-    query = sa.select([
-        Genome.name,
-        MetadataTaxonomy.gtdb_species,
-    ]).join(MetadataTaxonomy, Genome.id == MetadataTaxonomy.id).where(MetadataTaxonomy.gtdb_species != 's__')
-    results = db_gtdb.execute(query).fetchall()
+    with Session(gtdb_engine) as db_gtdb:
+        # Get all species that do not belong to those that exist in the tree
+        query = (
+            sa.select(
+                DbGenomes.name,
+                DbMetadataTaxonomy.gtdb_species,
+            )
+            .join(DbMetadataTaxonomy, DbGenomes.id == DbMetadataTaxonomy.id)
+            .where(DbMetadataTaxonomy.gtdb_species != 's__')
+        )
+        results = db_gtdb.execute(query).fetchall()
 
     d_sp_to_gids = defaultdict(set)
 
@@ -236,33 +255,36 @@ def get_extra_genomes(rows_parent, rows_children, d_extra_genomes):
     out_children = list()
     for parent_id, lst_children in d_parent_id_to_children.items():
         for order_id, child_id in enumerate(lst_children):
-            out_children.append(dict(
-                parent_id=parent_id,
-                child_id=child_id,
-                order_id=order_id
-            ))
+            out_children.append(
+                dict(
+                    parent_id=parent_id,
+                    child_id=child_id,
+                    order_id=order_id
+                )
+            )
 
     return out_parent, out_children
 
 
 def get_previous_release_annotations():
-    db = GtdbWebSession()
-    query = (sa.select([
-        DbGtdbTree.taxon.label('taxon'),
-        GtdbWebUrlBergeys.url.label('bergeys_url'),
-        GtdbWebUrlSeqcode.url.label('seqcode_url'),
-        GtdbWebUrlLpsn.url.label('lpsn_url'),
-        GtdbWebUrlNcbi.taxid.label('ncbi_taxid'),
-        GtdbWebUrlSandPiper.url.label('sandpiper_url')
-    ])
-             .outerjoin(GtdbWebUrlBergeys, GtdbWebUrlBergeys.id == DbGtdbTree.id)
-             .outerjoin(GtdbWebUrlSeqcode, GtdbWebUrlSeqcode.id == DbGtdbTree.id)
-             .outerjoin(GtdbWebUrlLpsn, GtdbWebUrlLpsn.id == DbGtdbTree.id)
-             .outerjoin(GtdbWebUrlNcbi, GtdbWebUrlNcbi.id == DbGtdbTree.id)
-             .outerjoin(GtdbWebUrlSandPiper, GtdbWebUrlSandPiper.id == DbGtdbTree.id)
-             )
+    with Session(gtdb_web_engine) as db:
+        query = (
+            sa.select(
+                DbGtdbTree.taxon.label('taxon'),
+                DbGtdbTreeUrlBergeys.url.label('bergeys_url'),
+                DbGtdbTreeUrlSeqCode.url.label('seqcode_url'),
+                DbGtdbTreeUrlLpsn.url.label('lpsn_url'),
+                DbGtdbTreeUrlNcbi.taxid.label('ncbi_taxid'),
+                DbGtdbTreeUrlSandpiper.url.label('sandpiper_url')
+            )
+            .outerjoin(DbGtdbTreeUrlBergeys, DbGtdbTreeUrlBergeys.id == DbGtdbTree.id)
+            .outerjoin(DbGtdbTreeUrlSeqCode, DbGtdbTreeUrlSeqCode.id == DbGtdbTree.id)
+            .outerjoin(DbGtdbTreeUrlLpsn, DbGtdbTreeUrlLpsn.id == DbGtdbTree.id)
+            .outerjoin(DbGtdbTreeUrlNcbi, DbGtdbTreeUrlNcbi.id == DbGtdbTree.id)
+            .outerjoin(DbGtdbTreeUrlSandpiper, DbGtdbTreeUrlSandpiper.id == DbGtdbTree.id)
+        )
 
-    results = db.execute(query).fetchall()
+        results = db.execute(query).fetchall()
 
     out = defaultdict(dict)
     for row in results:
@@ -283,10 +305,14 @@ def create_import_tsv(rows_parent, rows_children, d_taxon_to_annotations):
     os.makedirs(OUT_DIR, exist_ok=True)
 
     with open(os.path.join(OUT_DIR, 'gtdb_tree.tsv'), 'w') as f:
-        f.write('\t'.join((
-            'id', 'taxon', 'total', 'type', 'is_rep', 'type_material',
-            'n_desc_children'
-        )) + '\n')
+        f.write(
+            '\t'.join(
+                (
+                    'id', 'taxon', 'total', 'type', 'is_rep', 'type_material',
+                    'n_desc_children'
+                )
+            ) + '\n'
+            )
         for row in rows_parent:
             cur_row = [
                 row['id'],

@@ -5,38 +5,39 @@ if __name__ == '__main__':
 from collections import defaultdict
 
 import sqlalchemy as sa
-
-from api.db import GtdbWebSession
-# from api.db.models import DbGtdbTreeChildren, DbGtdbTree
-
+from api.db import gtdb_web_engine
+from sqlmodel import Session
+from api.db.gtdb_web import (
+    DbGtdbTree
+)
 
 def read_tree_rows():
-    db = GtdbWebSession()
-    try:
-        query = sa.text("""
-            select id, taxon, type, n_desc_children
-            from gtdb_tree
-            where type in ('d', 'p', 'c', 'o', 'f', 'g', 's');
-        """)
-        results = db.execute(query).fetchall()
-        d_id_to_row = {x['id']: dict(x) for x in results}
+    with Session(gtdb_web_engine) as db:
+        try:
+            query = sa.text("""
+                select id, taxon, type, n_desc_children
+                from gtdb_tree
+                where type in ('d', 'p', 'c', 'o', 'f', 'g', 's');
+            """)
+            results = db.execute(query).fetchall()
+            d_id_to_row = {x['id']: dict(x) for x in results}
 
-        query_children = sa.text("""
-            SELECT parent_id, child_id, order_id FROM gtdb_tree_children;
-        """)
-        results = db.execute(query_children).fetchall()
+            query_children = sa.text("""
+                SELECT parent_id, child_id, order_id FROM gtdb_tree_children;
+            """)
+            results = db.execute(query_children).fetchall()
 
-        d_parent_to_children = defaultdict(dict)
-        d_child_to_parent = dict()
-        for row in results:
-            cur_parent_id = row['parent_id']
-            cur_child_id = row['child_id']
-            d_parent_to_children[cur_parent_id][cur_child_id] = row['order_id']
-            d_child_to_parent[cur_child_id] = cur_parent_id
+            d_parent_to_children = defaultdict(dict)
+            d_child_to_parent = dict()
+            for row in results:
+                cur_parent_id = row['parent_id']
+                cur_child_id = row['child_id']
+                d_parent_to_children[cur_parent_id][cur_child_id] = row['order_id']
+                d_child_to_parent[cur_child_id] = cur_parent_id
 
-        return d_id_to_row, d_parent_to_children, d_child_to_parent
-    finally:
-        db.close()
+            return d_id_to_row, d_parent_to_children, d_child_to_parent
+        finally:
+            db.close()
 
 def get_incorrect_rows(d_id_to_row, d_parent_to_children, d_child_to_parent):
     out = dict()
@@ -69,18 +70,18 @@ def get_incorrect_rows(d_id_to_row, d_parent_to_children, d_child_to_parent):
     return out
 
 def update_rows(d_parent_id_to_correct_count):
-    db = GtdbWebSession()
-    try:
-        for parent_id, correct_count in d_parent_id_to_correct_count.items():
-            query = (
-                sa.update(DbGtdbTree)
-                .values(n_desc_children=correct_count)
-                .where(DbGtdbTree.id == parent_id)
-            )
-            db.execute(query)
-        db.commit()
-    finally:
-        db.close()
+    with Session(gtdb_web_engine) as db:
+        try:
+            for parent_id, correct_count in d_parent_id_to_correct_count.items():
+                query = (
+                    sa.update(DbGtdbTree)
+                    .values(n_desc_children=correct_count)
+                    .where(DbGtdbTree.id == parent_id)
+                )
+                db.execute(query)
+            db.commit()
+        finally:
+            db.close()
 
 
 def main():
@@ -93,7 +94,7 @@ def main():
     # Go through and make sure that the counts are correct
     d_parent_id_to_n_desc_children = get_incorrect_rows(d_id_to_row, d_parent_to_children, d_child_to_parent)
 
-    update_rows(d_parent_id_to_n_desc_children)
+    # update_rows(d_parent_id_to_n_desc_children)
     return
 
 
