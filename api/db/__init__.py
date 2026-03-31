@@ -7,8 +7,8 @@ from api.config import POSTGRES_USER, POSTGRES_PASS, POSTGRES_HOST, FASTANI_DB_U
 
 GTDB_DB_URL = f'postgresql://{POSTGRES_USER}:{POSTGRES_PASS}@{POSTGRES_HOST}/gtdb_r232'
 GTDB_WEB_DB_URL = f'postgresql://{POSTGRES_USER}:{POSTGRES_PASS}@{POSTGRES_HOST}/gtdb_r232_web'
-GTDB_COMMON_DB_URL = f'postgresql://{POSTGRES_USER}:{POSTGRES_PASS}@{POSTGRES_HOST}/common'
-GTDB_FASTANI_DB_URL = f'postgresql://{FASTANI_DB_USER}:{FASTANI_DB_PASS}@{POSTGRES_HOST}/{FASTANI_DB_NAME}'
+GTDB_COMMON_DB_URL = f'postgresql://{POSTGRES_USER}:{POSTGRES_PASS}@gtdb-db.ecogenomic.org/common'  # todo: swap once migrated for next release
+GTDB_FASTANI_DB_URL = f'postgresql://{FASTANI_DB_USER}:{FASTANI_DB_PASS}@gtdb-db.ecogenomic.org/{FASTANI_DB_NAME}' # todo: swap once migrated for next release
 
 gtdb_engine = create_engine(
     GTDB_DB_URL,

@@ -20,7 +20,9 @@ def read_tree_rows():
                 where type in ('d', 'p', 'c', 'o', 'f', 'g', 's');
             """)
             results = db.execute(query).fetchall()
-            d_id_to_row = {x['id']: dict(x) for x in results}
+            # d_id_to_row = {x['id']: dict(x) for x in results}
+            d_id_to_row = {x.id: {'id': x.id, 'taxon': x.taxon, 'type': x.type, 'n_desc_children': x.n_desc_children} for x in
+             results}
 
             query_children = sa.text("""
                 SELECT parent_id, child_id, order_id FROM gtdb_tree_children;
@@ -30,9 +32,9 @@ def read_tree_rows():
             d_parent_to_children = defaultdict(dict)
             d_child_to_parent = dict()
             for row in results:
-                cur_parent_id = row['parent_id']
-                cur_child_id = row['child_id']
-                d_parent_to_children[cur_parent_id][cur_child_id] = row['order_id']
+                cur_parent_id = row.parent_id
+                cur_child_id = row.child_id
+                d_parent_to_children[cur_parent_id][cur_child_id] = row.order_id
                 d_child_to_parent[cur_child_id] = cur_parent_id
 
             return d_id_to_row, d_parent_to_children, d_child_to_parent
@@ -64,7 +66,8 @@ def get_incorrect_rows(d_id_to_row, d_parent_to_children, d_child_to_parent):
 
         # Check if the number of children is correct
         if len(child_taxa) != cur_n_desc_children:
-            print(f'{parent_taxon}: {cur_n_desc_children} -> {len(child_taxa)}')
+            print(f'-- {parent_taxon}: {cur_n_desc_children} -> {len(child_taxa)}')
+            print(f'UPDATE gtdb_tree SET n_desc_children = {len(child_taxa)} WHERE id = {parent_id};')
             out[parent_id] = len(child_taxa)
 
     return out
@@ -94,7 +97,7 @@ def main():
     # Go through and make sure that the counts are correct
     d_parent_id_to_n_desc_children = get_incorrect_rows(d_id_to_row, d_parent_to_children, d_child_to_parent)
 
-    # update_rows(d_parent_id_to_n_desc_children)
+    update_rows(d_parent_id_to_n_desc_children)
     return
 
 

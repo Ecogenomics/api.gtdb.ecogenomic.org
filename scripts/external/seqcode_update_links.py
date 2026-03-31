@@ -1,5 +1,8 @@
 """
 This script will update the Common database with the latest SeqCode content.
+
+
+
 """
 
 if __name__ == '__main__':
@@ -202,11 +205,18 @@ def parse_name_pages(dir_names: Path, gtdb_taxa: Path, path_names: Path):
                 gtdb_id, in_db = gtdb_match
                 if not in_db:
                     if page_name_formatted in to_update:
-                        if page_data['name'].startswith('Candidatus '):
-                            # Prefer non-Candidatus names
+                        # Prefer non-Candidatus names if this already exists in to_update
+                        is_current_ca = page_data['name'].startswith('Candidatus ')
+                        is_existing_ca = to_update[page_name_formatted][2].startswith('Candidatus ')
+                        if is_current_ca and not is_existing_ca:
                             continue
-                        raise Exception('??')
-                    to_update[page_name_formatted] = (gtdb_id, page_data['uri'])
+                        elif not is_current_ca and is_existing_ca:
+                            to_update[page_name_formatted] = (gtdb_id, page_data['uri'], page_data['name'])
+                        else:
+                            raise Exception(f'Duplicate taxa found in SeqCode for {page_name_formatted} with IDs {to_update[page_name_formatted][0]} and {gtdb_id}.')
+                    # This doesn't exist so add it
+                    else:
+                        to_update[page_name_formatted] = (gtdb_id, page_data['uri'], page_data['name'])
                 else:
                     n_existing += 1
             else:
@@ -216,7 +226,7 @@ def parse_name_pages(dir_names: Path, gtdb_taxa: Path, path_names: Path):
         f'Done matching. Found {len(to_update):,} taxa to update, {n_existing:,} already in database, {n_miss:,} not found in GTDB tree table.')
     with path_names.open('w') as f:
         f.write('id\turl\n')
-        for taxon, (gtdb_id, uri) in to_update.items():
+        for taxon, (gtdb_id, uri, _) in to_update.items():
             f.write(f'{gtdb_id}\t{uri}\n')
 
     print(f'Wrote parsed names to {path_names}')
@@ -255,7 +265,7 @@ def main(args):
     # Read the names from the parsed file to scrape each name page
     if not path_names_parsed.exists():
         print('Scraping SeqCode name pages...')
-        # scrape_name_pages(dir_names, path_index_parsed, n_cpus)
+        scrape_name_pages(dir_names, path_index_parsed, n_cpus)
 
         # Extract names from the scraped name pages
         print('Parsing SeqCode name pages and matching to GTDB taxa...')

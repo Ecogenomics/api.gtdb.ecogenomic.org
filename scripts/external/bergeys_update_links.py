@@ -3,11 +3,8 @@ import argparse
 from pathlib import Path
 import sys
 from bs4 import BeautifulSoup
-import requests
 import json
-from tqdm import tqdm
 import re
-import time
 
 """
 Follow the process below in order to update the Bergey's links.
@@ -317,6 +314,6 @@ if __name__ == '__main__':
     To generate the GTDB taxa file, use the following SQL command in the web database:
 
     select t.id, t.taxon, CASE WHEN s.id IS NULL THEN 0 else 1 END as in_db from gtdb_tree t
-    LEFT JOIN gtdb_tree_url_seqcode s ON s.id = t.id
+    LEFT JOIN gtdb_tree_url_bergeys s ON s.id = t.id
     where type in ('d', 'p', 'c', 'o', 'f', 'g', 's')
     """

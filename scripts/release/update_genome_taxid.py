@@ -13,10 +13,14 @@ from collections import defaultdict
 import requests
 import sqlalchemy as sa
 from tqdm import tqdm
-
-from api.db import GtdbWebSession, GtdbSession, GTDB_DB_URL, GTDB_WEB_DB_URL
+from api.db import gtdb_web_engine, gtdb_engine
+from api.db import GTDB_DB_URL, GTDB_WEB_DB_URL
 # from api.db.models import Genome, MetadataTaxonomy, GtdbWebGenomeTaxId
 from api.util.collection import iter_batches
+from sqlmodel import Session
+
+from api.db.gtdb import DbGenomes, DbMetadataTaxonomy
+from api.db.gtdb_web import DbGenomeTaxId
 
 # Configuration
 RANKS = ('domain', 'phylum', 'class', 'order', 'family', 'genus', 'species')
@@ -28,15 +32,17 @@ URL_NCBI_TAXDUMP_MD5 = 'https://ftp.ncbi.nih.gov/pub/taxonomy/taxdump.tar.gz.md5
 
 
 def read_from_gids():
-    db = GtdbSession()
-    query = sa.select([Genome.name, MetadataTaxonomy.ncbi_taxonomy, MetadataTaxonomy.ncbi_taxonomy_unfiltered]).join(
-        MetadataTaxonomy, MetadataTaxonomy.id == Genome.id)
-    results = db.execute(query).fetchall()
+    with Session(gtdb_engine) as db:
+        query = (
+            sa.select(DbGenomes.name, DbMetadataTaxonomy.ncbi_taxonomy, DbMetadataTaxonomy.ncbi_taxonomy_unfiltered)
+            .join(DbMetadataTaxonomy, DbMetadataTaxonomy.id == DbGenomes.id)
+        )
+        results = db.execute(query).fetchall()
 
-    out = dict()
-    for result in tqdm(results):
-        out[result.name] = dict(result)
-    return out
+        out = dict()
+        for result in tqdm(results):
+            out[result.name] = {'name': result.name, 'ncbi_taxonomy': result.ncbi_taxonomy, 'ncbi_taxonomy_unfiltered': result.ncbi_taxonomy_unfiltered}
+        return out
 
 
 def confirm_database_selection():
@@ -212,14 +218,14 @@ def get_taxon_mapping(d_gids, d_ncbi_data):
 
 
 def insert_rows(rows):
-    db = GtdbWebSession()
-    batches = list(iter_batches(rows, 1000))
-    for batch in tqdm(batches, total=len(batches)):
-        for item in batch:
-            obj = sa.insert(GtdbWebGenomeTaxId).values(genome_id=item[0], payload=item[1])
-            db.execute(obj)
-        db.commit()
-    return
+    with Session(gtdb_web_engine) as db:
+        batches = list(iter_batches(rows, 1000))
+        for batch in tqdm(batches, total=len(batches)):
+            for item in batch:
+                obj = sa.insert(DbGenomeTaxId).values(genome_id=item[0], payload=item[1])
+                db.execute(obj)
+            db.commit()
+        return
 
 
 def main():

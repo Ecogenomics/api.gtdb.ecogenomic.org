@@ -3,11 +3,10 @@ if __name__ == '__main__':
 
     load_dotenv()
 from collections import defaultdict
-
+from api.db import gtdb_web_engine
+from sqlmodel import Session
 import sqlalchemy as sa
-
-from api.db import GtdbWebSession
-# from api.db.models import DbGtdbTreeChildren
+from api.db.gtdb_web import DbGtdbTreeChildren
 
 TS_SPECIES = frozenset({'type_strain_of_species', 'type_strain_of_heterotypic_synonym', 'type_strain_of_subspecies'})
 
@@ -19,33 +18,34 @@ TS_SP_ORDER = {
 
 
 def read_tree_rows():
-    db = GtdbWebSession()
-    try:
-        query = sa.text("""
-            select id, taxon, type, is_rep, type_material
-            from gtdb_tree
-            where type in ('genome', 's', 'g', 'f');
-        """)
-        results = db.execute(query).fetchall()
-        d_id_to_row = {x['id']: dict(x) for x in results}
+    with Session(gtdb_web_engine) as db:
+        try:
+            query = sa.text("""
+                select id, taxon, type, is_rep, type_material
+                from gtdb_tree
+                where type in ('genome', 's', 'g', 'f');
+            """)
+            results = db.execute(query).fetchall()
+            # d_id_to_row = {x['id']: dict(x) for x in results}
+            d_id_to_row = {x.id: {'id': x.id, 'taxon': x.taxon, 'type': x.type, 'is_rep': x.is_rep, 'type_material': x.type_material} for x in results}
 
-        query_children = sa.text("""
-            SELECT parent_id, child_id, order_id FROM gtdb_tree_children;
-        """)
-        results = db.execute(query_children).fetchall()
+            query_children = sa.text("""
+                SELECT parent_id, child_id, order_id FROM gtdb_tree_children;
+            """)
+            results = db.execute(query_children).fetchall()
 
-        d_parent_to_children = defaultdict(dict)
-        d_child_to_parent = dict()
-        for row in results:
-            cur_parent_id = row['parent_id']
-            cur_child_id = row['child_id']
-            if cur_child_id in d_id_to_row or cur_parent_id in d_id_to_row:
-                d_parent_to_children[cur_parent_id][cur_child_id] = row['order_id']
-                d_child_to_parent[cur_child_id] = cur_parent_id
+            d_parent_to_children = defaultdict(dict)
+            d_child_to_parent = dict()
+            for row in results:
+                cur_parent_id = row.parent_id
+                cur_child_id = row.child_id
+                if cur_child_id in d_id_to_row or cur_parent_id in d_id_to_row:
+                    d_parent_to_children[cur_parent_id][cur_child_id] = row.order_id
+                    d_child_to_parent[cur_child_id] = cur_parent_id
 
-        return d_id_to_row, d_parent_to_children, d_child_to_parent
-    finally:
-        db.close()
+            return d_id_to_row, d_parent_to_children, d_child_to_parent
+        finally:
+            db.close()
 
 
 def get_parent_ids_where_type_species_of_genus_wrong(d_id_to_row, d_parent_to_children, d_child_to_parent):
@@ -79,20 +79,20 @@ def get_parent_ids_where_type_species_of_genus_wrong(d_id_to_row, d_parent_to_ch
 
 
 def set_ordering(parent_id, child_ids_ordered):
-    db = GtdbWebSession()
-    try:
-        for order_id, child_id in enumerate(child_ids_ordered):
-            # Update the db
-            query = (
-                sa.update(DbGtdbTreeChildren)
-                .values(order_id=order_id)
-                .where(DbGtdbTreeChildren.parent_id == parent_id)
-                .where(DbGtdbTreeChildren.child_id == child_id)
-            )
-            db.execute(query)
-        db.commit()
-    finally:
-        db.close()
+    with Session(gtdb_web_engine) as db:
+        try:
+            for order_id, child_id in enumerate(child_ids_ordered):
+                # Update the db
+                query = (
+                    sa.update(DbGtdbTreeChildren)
+                    .values(order_id=order_id)
+                    .where(DbGtdbTreeChildren.parent_id == parent_id)
+                    .where(DbGtdbTreeChildren.child_id == child_id)
+                )
+                db.execute(query)
+            db.commit()
+        finally:
+            db.close()
 
 
 def update_wrong_sp_of_genus_ordering(parent_ids, d_parent_to_children, d_id_to_row):
@@ -178,8 +178,10 @@ def main():
         d_parent_to_children,
         d_child_to_parent
     )
+    print('-- Updating wrong sp of genus ordering')
     update_wrong_sp_of_genus_ordering(type_sp_of_genus_wrong_parent_ids, d_parent_to_children, d_id_to_row)
 
+    print('-- Updating wrong strain ordering')
     update_wrong_strains(d_id_to_row, d_parent_to_children, d_child_to_parent)
 
     return

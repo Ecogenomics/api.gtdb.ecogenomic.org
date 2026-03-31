@@ -1,16 +1,15 @@
-import tempfile
 
 if __name__ == '__main__':
     from dotenv import load_dotenv
 
     load_dotenv()
 
-from api.db import GtdbWebSession
-# from api.db.models import DbGtdbTree, GtdbWebUrlNcbi
+import tempfile
+from api.db.gtdb_web import DbGtdbTree, DbGtdbTreeUrlNcbi
 import requests
-
+from api.db import gtdb_web_engine
+from sqlmodel import Session
 import os
-from collections import defaultdict
 from typing import Dict, Tuple
 import sqlalchemy as sa
 from tqdm import tqdm
@@ -27,24 +26,27 @@ os.makedirs('/tmp/ncbi', exist_ok=True)
 
 def read_gtdb_tree_table() -> Dict[str, Dict[str, Tuple[int, str]]]:
     """This is an export of the GTDB tree table from the GTDB website."""
-    db = GtdbWebSession()
-    try:
-        # Get the mapping
-        query = sa.select([DbGtdbTree.id, DbGtdbTree.taxon]).where(DbGtdbTree.type != 'genome').where(
-            DbGtdbTree.taxon != 'root')
-        results = db.execute(query).fetchall()
+    with Session(gtdb_web_engine) as db:
+        try:
+            # Get the mapping
+            query = (
+                sa.select(DbGtdbTree.id, DbGtdbTree.taxon)
+                .where(DbGtdbTree.type != 'genome')
+                .where(DbGtdbTree.taxon != 'root')
+            )
+            results = db.execute(query).fetchall()
 
-        query2 = sa.select([GtdbWebUrlNcbi.id, GtdbWebUrlNcbi.taxid])
-        results2 = db.execute(query2).fetchall()
-        ids_in_db = {row.id: row.taxid for row in results2}
+            query2 = (sa.select(DbGtdbTreeUrlNcbi.id, DbGtdbTreeUrlNcbi.taxid))
+            results2 = db.execute(query2).fetchall()
+            ids_in_db = {row.id: row.taxid for row in results2}
 
-        out = defaultdict(dict)
-        for row in results:
-            if row.id not in ids_in_db:
-                out[row.taxon] = row.id
-        return out
-    finally:
-        db.close()
+            out = dict()
+            for row in results:
+                if row.id not in ids_in_db:
+                    out[row.taxon] = row.id
+            return out
+        finally:
+            db.close()
 
 
 def download_ncbi_taxdump_md5():

@@ -19,9 +19,6 @@ from api.db.gtdb_web import (
 )
 from api.db.gtdb import DbGenomes, DbMetadataTaxonomy
 
-# from api.db.models import DbGtdbTree, GtdbWebUrlBergeys, GtdbWebUrlSeqcode, GtdbWebUrlLpsn, GtdbWebUrlNcbi, \
-#     GtdbWebUrlSandPiper
-# from api.db.models import MetadataTaxonomy, Genome
 
 # Configuration
 JSON_PATH = '/Users/aaron/tmp/r232/genome_taxonomy_r232_count.json'
