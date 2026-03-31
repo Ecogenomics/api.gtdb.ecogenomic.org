@@ -132,6 +132,7 @@ class DbTaxonHistoryMtView(SQLModel, table=True):
     R214: str | None = Field()
     R220: str | None = Field()
     R226: str | None = Field()
+    R232: str | None = Field()
     NCBI: str | None = Field()
 
 

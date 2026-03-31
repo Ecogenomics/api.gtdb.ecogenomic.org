@@ -108,13 +108,13 @@ FASTANI_JOB_RETRY = Retry(max=3)
 FASTANI_GENOME_DIR = os.environ.get('FASTANI_GENOME_DIR')
 
 # GTDB releases (the order must be preserved, with NCBI last)
-GTDB_RELEASES = ('R80', 'R83', 'R86.2', 'R89', 'R95', 'R202', 'R207', 'R214', 'R220', 'R226', 'NCBI')
-CURRENT_RELEASE = 'R226'
+GTDB_RELEASES = ('R80', 'R83', 'R86.2', 'R89', 'R95', 'R202', 'R207', 'R214', 'R220', 'R226', 'R232', 'NCBI')
+CURRENT_RELEASE = 'R232'
 
 SITEMAP_PAGES = [
     'about', 'advanced', 'attributions', 'browsers', 'contact', 'downloads', 'faq', 'gsc', 'methods', 'searches',
     'tools/ani', 'stats/r89', 'stats/r95', 'stats/r202', 'stats/r207', 'stats/r214', 'stats/r220', 'stats/r226',
-    'taxon-history', 'tools', 'tree'
+    'stats/r232', 'taxon-history', 'tools', 'tree'
 ]
 
 BAC120_MARKERS = frozenset({

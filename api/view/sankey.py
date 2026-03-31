@@ -29,7 +29,7 @@ def taxonomy_count(
         releaseTo: Annotated[str, Query(
             ...,
             description='The release to search to (inclusive).',
-            example='R226',
+            example='R232',
         )],
         db: GtdbWebDbDep,
         filterRank: Annotated[str | None, Query(
