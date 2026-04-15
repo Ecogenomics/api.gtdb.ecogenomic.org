@@ -1,3 +1,12 @@
+# [2.27.0](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.26.0...v2.27.0) (2026-04-15)
+
+
+### Features
+
+* **r232:** Update db connection string and update scripts. ([063a80a](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/063a80ab4a048db15821bae4db32211e562e7240))
+* **r232:** Update scripts for R232. ([5211c34](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/5211c34f707c7c582ebddc35a007bec8f508cac9))
+* **r232:** Update taxon history. ([9c7932a](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/9c7932a6c29facecee93cca78596af997a38c134))
+
 # [2.26.0](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.25.2...v2.26.0) (2026-03-03)
 
 
