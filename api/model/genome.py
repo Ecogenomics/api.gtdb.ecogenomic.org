@@ -96,6 +96,7 @@ class GenomeMetadataTaxonomy(BaseModel):
     gtdbFamily: Optional[str] = Field(None)
     gtdbGenus: Optional[str] = Field(None)
     gtdbSpecies: Optional[str] = Field(None)
+    synonyms: Optional[List[str]] = Field(None)
 
 
 

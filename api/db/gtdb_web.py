@@ -1,4 +1,4 @@
-from sqlmodel import Field, SQLModel, Column, CHAR, JSON
+from sqlmodel import Field, SQLModel, Column, CHAR, JSON, ARRAY, TEXT
 
 """
 Tables below.
@@ -102,6 +102,14 @@ class DbTaxonHist(SQLModel, table=True):
     rank_family: str = Field()
     rank_genus: str = Field()
     rank_species: str = Field()
+
+
+class DbGtdbSynonym(SQLModel, table=True):
+    __tablename__ = 'gtdb_synonym'
+
+    id: int = Field(primary_key=True)
+    taxon: str = Field()
+    synonyms: str = Field(sa_column=Column(ARRAY(TEXT)))
 
 
 class DbUbaAlias(SQLModel, table=True):

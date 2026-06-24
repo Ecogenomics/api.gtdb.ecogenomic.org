@@ -11,7 +11,7 @@ from api.db.gtdb import (
     DbMetadataNucleotide,
     DbMetadataTaxonomy, DbMetadataTypeMaterial, DbGtdbTypeView
 )
-from api.db.gtdb_web import DbTaxonHist, DbLpsnUrl, DbGenomeTaxId
+from api.db.gtdb_web import DbTaxonHist, DbLpsnUrl, DbGenomeTaxId, DbGtdbSynonym
 from api.exceptions import HttpNotFound, HttpBadRequest
 from api.model.genome import (
     GenomeMarkersSummary, GenomeMetadata, GenomeTaxonHistory, GenomeCard, GenomeBase,
@@ -69,6 +69,14 @@ def maybe_get_canonical_markers_by_id(gid: int, db: Session) -> GenomeMarkersSum
         arc_n_missing=results.arc_n_mis
     )
     return out
+
+def maybe_get_synonyms_from_species_name(species: str, db: Session) -> List[str] | None:
+    if species:
+        query = sm.select(DbGtdbSynonym.synonyms).where(DbGtdbSynonym.taxon == species)
+        results = db.exec(query).first()
+        if results:
+            return results
+    return None
 
 def is_surveillance_genome(gid: str, db: Session) -> Optional[str]:
     # Check if this is a surveillance genome
@@ -284,6 +292,9 @@ def genome_card(accession: str, db_gtdb: Session, db_web: Session) -> GenomeCard
     # Load marker summary
     marker_summary = maybe_get_canonical_markers_by_id(genome.id, db_gtdb)
 
+    # Load synonyms
+    synonyms = maybe_get_synonyms_from_species_name(metadata_taxonomy.gtdb_species, db_web)
+
     out_metadata_gene = GenomeMetadataGene(
         checkm_completeness=metadata_gene.checkm_completeness,
         checkm_contamination=metadata_gene.checkm_contamination,
@@ -351,7 +362,8 @@ def genome_card(accession: str, db_gtdb: Session, db_web: Session) -> GenomeCard
         gtdbOrder=metadata_taxonomy.gtdb_order,
         gtdbFamily=metadata_taxonomy.gtdb_family,
         gtdbGenus=metadata_taxonomy.gtdb_genus,
-        gtdbSpecies=metadata_taxonomy.gtdb_species
+        gtdbSpecies=metadata_taxonomy.gtdb_species,
+        synonyms=synonyms
     )
 
     return GenomeCard(
