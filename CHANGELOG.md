@@ -1,3 +1,10 @@
+## [2.27.1](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.27.0...v2.27.1) (2026-06-30)
+
+
+### Bug Fixes
+
+* **convert-accessions:** Remove unused calls to scalar rows. ([8b40e78](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/commit/8b40e78f439c6d2f772461d03ff14808eb6c6e1e))
+
 # [2.27.0](https://github.com/Ecogenomics/api.gtdb.ecogenomic.org/compare/v2.26.0...v2.27.0) (2026-04-15)
 
 
