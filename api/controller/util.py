@@ -96,17 +96,17 @@ def canonical_to_short_ncbi(db: Session):
     query = sm.select(DbGenomes.name)
     for row in db.exec(query).all():
         # Take the most recent version
-        canonical = canonical_gid(row.name)
+        canonical = canonical_gid(row)
         if canonical in out:
             existing = out[canonical]
             replace = False
             if existing.startswith('GCF'):
                 replace = True
-            elif int(existing[-1]) < int(row.name[-1]):
+            elif int(existing[-1]) < int(row[-1]):
                 replace = True
             if replace:
-                out[canonical] = row.name
-        out[canonical] = row.name
+                out[canonical] = row
+        out[canonical] = row
     return out
 
 
